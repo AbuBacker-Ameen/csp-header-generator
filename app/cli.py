@@ -2,7 +2,14 @@ import typer
 from rich.console import Console
 from app.csp_generator import generate_csp_header
 
-app = typer.Typer()
+app = typer.Typer(
+    name="csp-header-gen",
+    help="Interactive CLI tool to generate secure Content Security Policy headers.",
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+
 console = Console()
 
 @app.callback(invoke_without_command=True)
@@ -12,15 +19,34 @@ def main(ctx: typer.Context):
         typer.echo(ctx.get_help())
         raise typer.Exit()
 
-@app.command()
-def generate(path: str = typer.Option(..., prompt=True, help="Path to your website directory."),
-             output: str = typer.Option("csp_headers.conf", help="Output CSP header file.")):
-    console.print("[bold cyan]Generating CSP headers...[/bold cyan]")
+@app.command(
+    help="Scan a directory for HTML files and generate CSP headers to an output file."
+)
+def generate(
+    path: str = typer.Option(
+        ...,
+        "-p",
+        "--path",
+        prompt="Website directory to scan",
+        help="Path to your website directory containing HTML files.",
+    ),
+    output: str = typer.Option(
+        "csp_headers.conf",
+        "-o",
+        "--output",
+        help="Filename (or path) where the generated CSP headers will be written.",
+    ),
+):
+    """
+    Generate CSP headers by hashing inline <script> tags in HTML files under PATH and write them to OUTPUT.
+    """
+    console.print("\n[bold cyan]🔍 Scanning HTML files and generating CSP headers...[/bold cyan]\n")
     try:
         csp_header, details = generate_csp_header(path)
         with open(output, "w") as file:
             file.write(csp_header)
         console.print(f"[green]✅ CSP headers successfully written to {output}.[/green]")
+        console.print(f"[green]🔢 {len(details)} unique script hashes generated.[/green]\n")
         for detail in details:
             console.print(detail)
     except Exception as e:

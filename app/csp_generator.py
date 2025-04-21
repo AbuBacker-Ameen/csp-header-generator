@@ -22,11 +22,14 @@ def generate_csp_header(scan_path: str) -> Tuple[str, List[str]]:
                         if not script_tag.has_attr("src"):
                             script_content = script_tag.decode_contents().strip()
                             if script_content:
-                                hash_digest = hashlib.sha256(script_content.encode()).digest()
-                                hash_b64 = base64.b64encode(hash_digest).decode()
+                                hash_digest = hashlib.sha256(script_content.encode("utf-8")).digest()
+                                hash_b64 = base64.b64encode(hash_digest).decode("utf-8")
                                 full_hash = f"'sha256-{hash_b64}'"
-                                script_hashes.add(full_hash)
-                                details.append(log_detail(full_hash, filepath, len(script_content)))
+                                if full_hash not in script_hashes:
+                                    script_hashes.add(full_hash)
+                                    details.append(log_detail(full_hash, filepath, len(script_content)))
+                            else:
+                                print(f"⚠️  Skipped empty inline script in: {filepath}")
     
     sorted_hashes = sorted(script_hashes)
     csp = (
