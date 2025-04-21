@@ -1,6 +1,8 @@
 import typer
 from rich.console import Console
 from app.csp_generator import generate_csp_header
+from pathlib import Path as pathlib_Path
+from typing_extensions import Annotated
 
 app = typer.Typer(
     name="csp-header-gen",
@@ -23,13 +25,22 @@ def main(ctx: typer.Context):
     help="Scan a directory for HTML files and generate CSP headers to an output file."
 )
 def generate(
-    path: str = typer.Option(
-        ...,
-        "-p",
-        "--path",
-        prompt="Website directory to scan",
-        help="Path to your website directory containing HTML files.",
-    ),
+    path: Annotated[
+        pathlib_Path,
+        typer.Option(
+            ...,
+            "-p",
+            "--path",
+            prompt="Website directory to scan",
+            help="Path to your website directory containing HTML files.",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            writable=False,
+            readable=True,
+            resolve_path=True,
+        ),
+    ],
     output: str = typer.Option(
         "csp_headers.conf",
         "-o",

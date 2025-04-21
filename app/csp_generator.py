@@ -6,8 +6,8 @@ from typing import Tuple, List
 from app.utils import log_detail
 
 def generate_csp_header(scan_path: str) -> Tuple[str, List[str]]:
-    if not os.path.isdir(scan_path):
-        raise ValueError(f"Provided path '{scan_path}' is not a valid directory.")
+    # if not os.path.isdir(scan_path):
+    #     raise ValueError(f"Provided path '{scan_path}' is not a valid directory.")
 
     script_hashes = set()
     details = []
