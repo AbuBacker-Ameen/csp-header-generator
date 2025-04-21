@@ -9,4 +9,5 @@ RUN pip install --upgrade pip \
 
 COPY . .
 
-CMD ["python", "-m", "app.cli"]
+ENTRYPOINT ["python", "-m", "app.cli"]
+CMD ["--help"]

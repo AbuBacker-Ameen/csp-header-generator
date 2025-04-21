@@ -1,16 +1,23 @@
 # CSP Header Generator
 
-An interactive Python CLI tool designed to effortlessly generate secure and precise Content Security Policy (CSP) headers. The tool scans HTML files, extracts inline scripts, computes secure hashes, and provides ready-to-use CSP header configurations, ideal for static sites and general web projects.
+An interactive Python CLI tool designed to effortlessly generate secure and
+precise Content Security Policy (CSP) headers. The tool scans HTML files,
+extracts inline scripts, computes secure hashes, and provides ready-to-use CSP
+header configurations, ideal for static sites and general web projects.
 
 ---
 
 ## Features
 
-- **Interactive CLI**: Built with `typer`, providing an intuitive command-line interface.
-- **Automatic Script Hashing**: Scans HTML files and generates CSP hashes (`sha256`) for inline scripts.
-- **Dockerized Environment**: Ensures reproducibility and isolation for both development and production.
+- **Interactive CLI**: Built with `typer`, providing an intuitive command-line
+  interface.
+- **Automatic Script Hashing**: Scans HTML files and generates CSP hashes
+  (`sha256`) for inline scripts.
+- **Dockerized Environment**: Ensures reproducibility and isolation for both
+  development and production.
 - **Enhanced Logging**: User-friendly, informative output with `rich`.
-- **Customizable**: Supports tailored CSP directives to match your project's specific security needs.
+- **Customizable**: Supports tailored CSP directives to match your project's
+  specific security needs.
 
 ---
 
@@ -72,5 +79,5 @@ docker-compose run app pytest
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file
+for details.
