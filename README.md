@@ -2,82 +2,136 @@
 
 An interactive Python CLI tool designed to effortlessly generate secure and
 precise Content Security Policy (CSP) headers. The tool scans HTML files,
-extracts inline scripts, computes secure hashes, and provides ready-to-use CSP
-header configurations, ideal for static sites and general web projects.
+extracts inline script hashes, and provides ready-to-use CSP header
+configurations, ideal for static sites and general web projects.
 
 ---
 
 ## Features
 
-- **Interactive CLI**: Built with `typer`, providing an intuitive command-line
-  interface.
-- **Automatic Script Hashing**: Scans HTML files and generates CSP hashes
-  (`sha256`) for inline scripts.
-- **Dockerized Environment**: Ensures reproducibility and isolation for both
+- **Interactive CLI**: Built with `typer`, offering prompts when flags are
+  omitted but fully scriptable via flags.
+- **Automatic Script Hashing**: Scans HTML files and computes SHA256-based,
+  Base64-encoded hashes for inline scripts.
+- **Header Validation**: Compare existing CSP headers against current HTML
+  script hashes to detect discrepancies.
+- **Website Fetching**: (Future) Fetch live sites by URL and generate a tailored
+  CSP report and header.
+- **Dockerized Environment**: Ensures reproducibility and isolation for
   development and production.
-- **Enhanced Logging**: User-friendly, informative output with `rich`.
-- **Customizable**: Supports tailored CSP directives to match your project's
-  specific security needs.
+- **Enhanced Logging**: User-friendly, informative output powered by `rich`.
+- **Customizable**: Full CLI configuration for all CSP directives with sensible
+  defaults based on recommended security practices.
+
+---
+
+## TO-DO
+
+1. **Full CSP Customization**: Enable end-to-end CSP header configuration from
+   the CLI, exposing every directive (scripts, styles, images, etc.) with a
+   secure recommended default.
+2. **Remote Site Analysis**: Add a command to fetch a website by URL, scan its
+   resources, and produce both a validation report and a correct CSP header
+   tailored to that site.
 
 ---
 
 ## Prerequisites
 
-- Docker
+- Docker (with Compose)
+- Python 3.12 (Dockerized)
+
+---
+
+## Repository Structure
+
+```plaintext
+├── app/
+│   ├── __init__.py            # Package entry point
+│   ├── cli.py                 # Typer-based CLI definitions
+│   ├── csp_generator.py       # Core hashing & validation logic
+│   └── utils.py               # Shared helpers (logging)
+├── tests/
+│   └── test_csp_generator.py  # Unit tests (TO-DO)
+├── Dockerfile                 # Docker setup for the app
+├── docker-compose.yml         # Compose for development & production
+├── requirements.txt           # Python dependencies
+├── README.md                  # Project documentation (this file)
+└── LICENSE                    # MIT License
+```
 
 ---
 
 ## Quick Start
 
-Clone the repository:
-
 ```bash
-git clone https://github.com/yourusername/csp-header-generator.git
+git clone https://github.com/AbuBacker-Ameen/csp-header-generator.git
 cd csp-header-generator
+
+docker-compose up --build    # Build & show help by default
 ```
 
-Build and launch Docker container:
+### Scripted Run
 
 ```bash
-docker-compose up --build
-```
-
-Run the CLI tool:
-
-```bash
-docker-compose run app
+docker-compose run --rm app generate --path ./public --output ./csp.conf
 ```
 
 ---
 
-## Usage
+## CLI Commands
 
-The interactive CLI will guide you through:
+### `generate`
 
-1. Specifying the directory to scan for HTML files.
-2. Generating script hashes.
-3. Customizing CSP directives.
-4. Exporting CSP headers to a configuration file.
-
-Example:
+Generate CSP headers:
 
 ```bash
-docker-compose run app generate --path ./my-website --output ./csp_headers.conf
+csp-header-gen generate \
+  --path <HTML_DIRECTORY> \
+  --output <HEADER_FILE>
+```
+
+### `validate`
+
+Validate an existing CSP header file against current HTML scripts:
+
+```bash
+csp-header-gen validate \
+  --path <HTML_DIRECTORY> \
+  --file <HEADER_FILE>
+```
+
+### `version`
+
+Show tool version:
+
+```bash
+csp-header-gen version
 ```
 
 ---
 
-## Testing
+## Docker Usage
 
-Tests use `pytest`. Execute tests within the Docker environment:
+- **Development** (interactive CLI):
 
-```bash
-docker-compose run app pytest
-```
+  ```bash
+  docker-compose run --rm app generate
+  ```
+
+- **Production/CI** (non-interactive):
+
+  ```yaml
+  services:
+    app:
+      image: yourusername/csp-header-gen:latest
+      command: ['generate', '--path', '/data', '--output', '/app/csp.conf']
+      volumes:
+        - ./public:/data:ro
+  ```
 
 ---
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file
-for details.
+MIT License. See [LICENSE](LICENSE) for details.
