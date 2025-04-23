@@ -6,6 +6,8 @@
 [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)](https://github.com/AbuBacker-Ameen/csp-header-generator/blob/main/Dockerfile)
 [![GitHub Issues](https://img.shields.io/github/issues/AbuBacker-Ameen/csp-header-generator.svg)](https://github.com/AbuBacker-Ameen/csp-header-generator/issues)
 
+[![GitHub Stars](https://img.shields.io/github/stars/AbuBacker-Ameen/csp-header-generator.svg?style=for-the-badge)](https://github.com/AbuBacker-Ameen/csp-header-generator/stargazers)
+
 An interactive Python CLI tool designed to effortlessly generate secure and
 precise Content Security Policy (CSP) headers. The tool scans HTML files,
 extracts inline script hashes, and provides ready-to-use CSP header
