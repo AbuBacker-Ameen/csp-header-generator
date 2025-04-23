@@ -130,10 +130,11 @@ csp-header-gen version
   ```yaml
   services:
     app:
-      image: yourusername/csp-header-gen:latest
-      command: ['generate', '--path', '/data', '--output', '/app/csp.conf']
-      volumes:
-        - ./public:/data:ro
+    build: .
+    volumes:
+      - ./:/app
+      - /Users/example/my-site:/data:ro # mount your site here
+     command: ['generate', '--path', '/data', '--output', '/app/csp.conf']
   ```
 
 ---
