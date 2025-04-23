@@ -1,12 +1,12 @@
 # CSP Header Generator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/AbuBacker-Ameen/csp-header-generator/blob/main/LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://github.com/AbuBacker-Ameen/csp-header-generator/blob/main/LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/downloads/release/python-3120/)
 [![Typer](https://img.shields.io/badge/Made%20with-Typer-04AA6D?logo=python)](https://typer.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)](https://github.com/AbuBacker-Ameen/csp-header-generator/blob/main/Dockerfile)
-[![GitHub Issues](https://img.shields.io/github/issues/AbuBacker-Ameen/csp-header-generator.svg)](https://github.com/AbuBacker-Ameen/csp-header-generator/issues)
+[![GitHub Issues](https://img.shields.io/github/issues/AbuBacker-Ameen/csp-header-generator)](https://github.com/AbuBacker-Ameen/csp-header-generator/issues)
 
-[![GitHub Stars](https://img.shields.io/github/stars/AbuBacker-Ameen/csp-header-generator.svg?style=for-the-badge)](https://github.com/AbuBacker-Ameen/csp-header-generator/stargazers)
+[![GitHub Stars](https://img.shields.io/github/stars/AbuBacker-Ameen/csp-header-generator?style=for-the-badge)](https://github.com/AbuBacker-Ameen/csp-header-generator/stargazers)
 
 An interactive Python CLI tool designed to effortlessly generate secure and
 precise Content Security Policy (CSP) headers. The tool scans HTML files,
