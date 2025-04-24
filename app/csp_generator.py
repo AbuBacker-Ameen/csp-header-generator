@@ -1,105 +1,325 @@
-import os
-import re
 import hashlib
 import base64
+import os
+from typing import List, Dict
+from rich.console import Console
+from rich.table import Table
+from rich.align import Align
+from rich import box
+import requests
 from bs4 import BeautifulSoup
-from typing import Tuple, List
-from app.utils import log_detail
+from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestException
+import logging
+from urllib.parse import urlparse
 
-def generate_csp_header(scan_path: str) -> Tuple[str, List[str]]:
-    # if not os.path.isdir(scan_path):
-    #     raise ValueError(f"Provided path '{scan_path}' is not a valid directory.")
+console = Console()
 
-    script_hashes = set()
-    details = []
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler('csp_generator.log'),
+        # logging.StreamHandler()  # Optional: remove for production
+    ]
+)
+logger = logging.getLogger(__name__)
 
-    for root, _, files in os.walk(scan_path):
-        for filename in files:
-            if filename.endswith(".html"):
-                filepath = os.path.join(root, filename)
-                with open(filepath, "r", encoding="utf-8") as file:
-                    soup = BeautifulSoup(file, "html.parser")
-                    for script_tag in soup.find_all("script"):
-                        if not script_tag.has_attr("src"):
-                            script_content = script_tag.decode_contents().strip()
-                            if script_content:
-                                hash_digest = hashlib.sha256(script_content.encode("utf-8")).digest()
-                                hash_b64 = base64.b64encode(hash_digest).decode("utf-8")
-                                full_hash = f"'sha256-{hash_b64}'"
-                                if full_hash not in script_hashes:
-                                    script_hashes.add(full_hash)
-                                    details.append(log_detail(full_hash, filepath, len(script_content)))
-                            else:
-                                print(f"⚠️  Skipped empty inline script in: {filepath}")
-    
-    sorted_hashes = sorted(script_hashes)
-    csp = (
-        "Content-Security-Policy: default-src 'none'; "
-        "script-src 'self' " + " ".join(sorted_hashes) + "; "
-        "style-src 'self'; img-src 'self' data:; font-src 'self'; "
-        "frame-ancestors 'none'; base-uri 'self'; form-action 'none'"
-    )
+class CSPGenerator:
+    def __init__(self):
+        self.directives = {
+            'default-src': ["'self'"],
+            'script-src': ["'self'"],
+            'style-src': ["'self'"],
+            'img-src': ["'self'"],
+            'connect-src': ["'self'"],
+            'font-src': ["'self'"],
+            'object-src': ["'none'"],
+            'media-src': ["'self'"],
+            'frame-src': ["'none'"],
+            'child-src': ["'self'"],
+            'worker-src': ["'self'"],
+            'base-uri': ["'self'"],
+            'form-action': ["'self'"],
+            'frame-ancestors': ["'none'"],
+            'manifest-src': ["'self'"],
+        }
+        self.hashes = {'script-src': [], 'style-src': []}
+        self.stats = {
+            'files_processed': 0,
+            'files_with_no_inline_scripts': 0,
+            'unique_script_hashes': 0,
+            'unique_style_hashes': 0,
+            'external_scripts': 0,
+            'external_styles': 0,
+            'external_images': 0
+        }
+        logger.info("Initialized CSPGenerator with default directives")
 
-    header_content = f"""
-{csp}
-X-XSS-Protection: 0
-Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-Referrer-Policy: strict-origin-when-cross-origin
-X-Frame-Options: DENY
-X-Content-Type-Options: nosniff
-Permissions-Policy: geolocation=(), microphone=(), camera=(), interest-cohort=()
-Expect-CT: max-age=86400, enforce
-""".strip()
+    def compute_hash(self, content: str, source: str) -> str:
+        """Compute SHA256 hash of content and encode in Base64."""
+        try:
+            sha256_hash = hashlib.sha256(content.encode('utf-8')).digest()
+            hash_value = f"'sha256-{base64.b64encode(sha256_hash).decode('utf-8')}'"
+            logger.info(f"Computed hash {hash_value} for content from {source}")
+            return hash_value
+        except UnicodeEncodeError as e:
+            logger.error(f"Encoding error for content from {source}: {e}")
+            raise
 
-    return header_content, details
+    def scan_html_file(self, file_path: str):
+        """Scan HTML file for inline scripts and styles, compute hashes."""
+        try:
+            if not os.path.isfile(file_path):
+                logger.error(f"Invalid file: {file_path}")
+                console.print(f"[red]Error: {file_path} is not a valid file :no_entry_sign:[/red]")
+                return
+            with open(file_path, 'r', encoding='utf-8') as f:
+                logger.info(f"Scanning file: {file_path}")
+                soup = BeautifulSoup(f, 'html.parser')
+                
+                # Extract inline scripts
+                scripts = soup.find_all('script', src=False)
+                for script in scripts:
+                    if script.string:
+                        script_hash = self.compute_hash(script.string.strip(), file_path)
+                        if script_hash not in self.hashes['script-src']:
+                            self.hashes['script-src'].append(script_hash)
+                            self.stats['unique_script_hashes'] += 1
+                            logger.info(f"Added script hash {script_hash} from {file_path}")
+                
+                # Extract inline styles
+                styles = soup.find_all('style')
+                for style in styles:
+                    if style.string:
+                        style_hash = self.compute_hash(style.string.strip(), file_path)
+                        if style_hash not in self.hashes['style-src']:
+                            self.hashes['style-src'].append(style_hash)
+                            self.stats['unique_style_hashes'] += 1
+                            logger.info(f"Added style hash {style_hash} from {file_path}")
+                
+                self.stats['files_processed'] += 1
+                if not scripts and not styles:
+                    logger.info(f"No inline scripts or styles in {file_path}")
+                    self.stats['files_with_no_inline_scripts'] += 1
+        except FileNotFoundError:
+            logger.error(f"File not found: {file_path}")
+            console.print(f"[red]Error: File {file_path} not found :no_entry_sign:[/red]")
+        except UnicodeDecodeError:
+            logger.error(f"Invalid encoding in file: {file_path}")
+            console.print(f"[red]Error: File {file_path} has invalid encoding :no_entry_sign:[/red]")
+        except Exception as e:
+            logger.error(f"Unexpected error scanning {file_path}: {e}", exc_info=True)
+            console.print(f"[red]Unexpected error scanning {file_path}: {e} :sweat:[/red]")
 
-def validate_csp_header(scan_path: str, header_file: str) -> Tuple[bool, List[str]]:
-    """
-    Compare inline-script hashes in HTML files under scan_path
-    against those listed in the existing CSP header_file.
+    def scan_directory(self, path: str):
+        """Scan all HTML files in a directory."""
+        try:
+            if not os.path.isdir(path):
+                logger.error(f"Invalid directory: {path}")
+                console.print(f"[red]Error: {path} is not a valid directory :no_entry_sign:[/red]")
+                return
+            logger.info(f"Scanning directory: {path}")
+            html_files = 0
+            for root, _, files in os.walk(path):
+                for file in files:
+                    if file.endswith('.html'):
+                        html_files += 1
+                        self.scan_html_file(os.path.join(root, file))
+            if html_files == 0:
+                logger.info(f"No HTML files found in {path}")
+                console.print(f"[yellow]No HTML files found in {path} :open_file_folder:[/yellow]")
+            else:
+                logger.info(f"Scanned {html_files} HTML files in {path}")
+                console.print(f"[green]Scanned {html_files} HTML files :books:[/green]")
+        except Exception as e:
+            logger.error(f"Error scanning directory {path}: {e}", exc_info=True)
+            console.print(f"[red]Error scanning directory {path}: {e} :sweat:[/red]")
 
-    Returns (is_valid, report_lines).
-    """
+    def fetch_remote_site(self, url: str) -> bool:
+        """Fetch and analyze a remote website for CSP resources."""
+        try:
+            if not url.startswith(('http://', 'https://')):
+                logger.error(f"Invalid URL format: {url}")
+                console.print(f"[red]Error: Invalid URL format: {url}. Must start with http:// or https:// :no_entry_sign:[/red]")
+                return False
+            logger.info(f"Fetching website: {url}")
+            console.print(f"[cyan]Fetching website: {url} :globe_with_meridians:[/cyan]")
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
 
-    # same generate_csp_header logic to get current hashes
-    current_hashes = set()
-    for root, _, files in os.walk(scan_path):
-        for fname in files:
-            if fname.endswith('.html'):
-                full_path = os.path.join(root, fname)
-                with open(full_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                # find inline scripts and hash them
-                soup = BeautifulSoup(content, 'html.parser')
-                for tag in soup.find_all('script'):
-                    if not tag.has_attr('src'):
-                        script = tag.decode_contents().strip()
-                        if script:
-                            digest = hashlib.sha256(script.encode()).digest()
-                            b64 = base64.b64encode(digest).decode()
-                            current_hashes.add(f"'sha256-{b64}'")
+            # Extract inline scripts
+            scripts = soup.find_all('script', src=False)
+            for script in scripts:
+                if script.string:
+                    script_hash = self.compute_hash(script.string.strip(), url)
+                    if script_hash not in self.hashes['script-src']:
+                        self.hashes['script-src'].append(script_hash)
+                        self.stats['unique_script_hashes'] += 1
+                        logger.info(f"Added script hash {script_hash} from {url}")
 
-    # Extract hashes from the existing header file
-    with open(header_file, 'r', encoding='utf-8') as f:
-        header_text = f.read()
-    # regex to capture everything between script-src and the next semicolon
-    match = re.search(r"script-src[^;]*", header_text)
-    if not match:
-        raise ValueError("No script-src directive found in header.")
-    header_directive = match.group(0)
-    # extract individual 'sha256-...' tokens
-    header_hashes = set(re.findall(r"'sha256-[A-Za-z0-9+/=]+'", header_directive))
+            # Extract inline styles
+            styles = soup.find_all('style')
+            for style in styles:
+                if style.string:
+                    style_hash = self.compute_hash(style.string.strip(), url)
+                    if style_hash not in self.hashes['style-src']:
+                        self.hashes['style-src'].append(style_hash)
+                        self.stats['unique_style_hashes'] += 1
+                        logger.info(f"Added style hash {style_hash} from {url}")
 
-    missing = current_hashes - header_hashes
-    extra = header_hashes - current_hashes
+            # Extract external resources
+            for script in soup.find_all('script', src=True):
+                src = script.get('src')
+                if src and src not in self.directives['script-src']:
+                    self.directives['script-src'].append(src)
+                    self.stats['external_scripts'] += 1
+                    logger.info(f"Added external script source: {src} from {url}")
 
-    report: List[str] = []
-    if missing:
-        for h in sorted(missing):
-            report.append(f"Missing hash: {h}")
-    if extra:
-        for h in sorted(extra):
-            report.append(f"Extraneous hash: {h}")
+            for link in soup.find_all('link', href=True):
+                href = link.get('href')
+                if href and link.get('rel') == ['stylesheet'] and href not in self.directives['style-src']:
+                    self.directives['style-src'].append(href)
+                    self.stats['external_styles'] += 1
+                    logger.info(f"Added external style source: {href} from {url}")
 
-    is_valid = not report
-    return is_valid, report
+            for img in soup.find_all('img', src=True):
+                src = img.get('src')
+                if src and src not in self.directives['img-src']:
+                    self.directives['img-src'].append(src)
+                    self.stats['external_images'] += 1
+                    logger.info(f"Added image source: {src} from {url}")
+
+            if not scripts and not styles and not self.directives['script-src'] and not self.directives['style-src']:
+                logger.info(f"No resources found at {url}")
+                console.print(f"[yellow]No resources found at {url} 📡[/yellow]")
+            
+            logger.info(f"Successfully fetched and analyzed {url}")
+            console.print(f"[green]Successfully analyzed {url} 🎉[/green]")
+            return True
+        except HTTPError as e:
+            logger.error(f"HTTP error fetching {url}: {e.response.status_code} {e.response.reason}")
+            console.print(f"[red]HTTP error: {e.response.status_code} {e.response.reason} :no_entry_sign:[/red]")
+            return False
+        except ConnectionError:
+            logger.error(f"Connection error fetching {url}: Unable to reach server")
+            console.print(f"[red]Connection error: Unable to reach {url}. Check your network. :globe_with_meridians:[/red]")
+            return False
+        except Timeout:
+            logger.error(f"Timeout fetching {url}: Request took too long")
+            console.print(f"[red]Timeout: Request to {url} took too long. Try again later. :hourglass_flowing_sand:[/red]")
+            return False
+        except RequestException as e:
+            logger.error(f"Request error fetching {url}: {e}")
+            console.print(f"[red]Request error fetching {url}: {e} :sweat:[/red]")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error fetching {url}: {e}", exc_info=True)
+            console.print(f"[red]Unexpected error processing {url}: {e} :sweat:[/red]")
+            return False
+
+    def generate_csp(self) -> str:
+        """Generate CSP header string."""
+        try:
+            csp_parts = []
+            for directive, sources in self.directives.items():
+                if sources:
+                    if directive in self.hashes and self.hashes[directive]:
+                        sources = sources + self.hashes[directive]
+                    csp_parts.append(f"{directive} {' '.join(sources)}")
+            if not csp_parts:
+                logger.warning("No directives to generate CSP header")
+                console.print("[yellow]No directives to generate CSP header :scroll:[/yellow]")
+                return "default-src 'self'"
+            csp_header = '; '.join(csp_parts)
+            logger.info(f"Generated CSP header: {csp_header}")
+            self._print_summary_report()
+            return csp_header
+        except Exception as e:
+            logger.error(f"Error generating CSP header: {e}", exc_info=True)
+            #console.print(f"[red]Error generating CSP header: {e} :sweat:[/red]")
+            raise
+
+    def _print_summary_report(self):   
+        table = Table(
+            title="CSP Generation Report :dart:",
+            box=box.MINIMAL_DOUBLE_HEAD,
+            title_justify="center",
+            title_style="bold bright_cyan",
+            show_header=True,
+            header_style="bold magenta",
+            pad_edge=False,
+            row_styles=("none", "yellow"),
+            expand=True,
+        )
+
+        # Columns: header centred (column justify="center")
+        table.add_column("Metric", justify="center", style="cyan", no_wrap=True, ratio=2)
+        table.add_column("Value",  justify="center", style="green", overflow="fold")
+
+        # Body rows: wrap every cell in Align.left() for left alignment
+        rows = [
+            ("Files Processed :page_facing_up: ",               self.stats["files_processed"]),
+            ("Files With No inline scripts or styles :scroll: ",self.stats["files_with_no_inline_scripts"]),
+            ("Unique Script Hashes :hammer_and_wrench: ",       self.stats["unique_script_hashes"]),
+            ("Unique Style Hashes :art: ",                      self.stats["unique_style_hashes"]),
+            ("External Scripts :globe_with_meridians:",         self.stats["external_scripts"]),
+            ("External Styles :art:",                           self.stats["external_styles"]),
+            ("External Images :framed_picture:",                self.stats["external_images"]),
+        ]
+
+        for metric, value in rows:
+            style = "bold red" if value == 0 else ""
+            table.add_row(Align.left(metric), Align.center(str(value)), style=style)
+       
+        
+        console.print(Align.center(table))
+        console.print("[bold green]✨ CSP Header Generated Successfully! [/bold green]")
+
+    def validate_csp(self, csp_file: str, path: str) -> bool:
+        """Validate existing CSP header against current HTML."""
+        try:
+            if not os.path.isfile(csp_file):
+                logger.error(f"CSP file not found: {csp_file}")
+                console.print(f"[red]Error: CSP file {csp_file} not found :no_entry_sign:[/red]")
+                return False
+            self.scan_directory(path)
+            with open(csp_file, 'r', encoding='utf-8') as f:
+                existing_csp = f.read().strip()
+            
+            generated_csp = self.generate_csp()
+            if existing_csp == generated_csp:
+                logger.info("CSP header validation successful")
+                console.print("[green]CSP header is valid! :white_check_mark:[/green]")
+                return True
+            else:
+                logger.warning("CSP header mismatch")
+                console.print("[yellow]CSP header mismatch! :warning:[/yellow]")
+                #console.print(f"[cyan]Expected:[/cyan] {generated_csp}")
+                #console.print(f"[cyan]Found:[/cyan] {existing_csp}")
+                return False
+        except UnicodeDecodeError:
+            logger.error(f"Invalid encoding in CSP file: {csp_file}")
+            console.print(f"[red]Error: CSP file {csp_file} has invalid encoding :no_entry_sign:[/red]")
+            return False
+        except Exception as e:
+            logger.error(f"Error validating CSP file {csp_file}: {e}", exc_info=True)
+            console.print(f"[red]Error validating CSP file {csp_file}: {e} :sweat:[/red]")
+            return False
+
+    def update_directive(self, directive: str, sources: List[str]):
+        """Update a CSP directive with new sources."""
+        try:
+            if directive in self.directives:
+                self.directives[directive] = sources
+                logger.info(f"Updated {directive} with sources: {sources}")
+                console.print(f"[green]Updated {directive} with sources: {sources} :white_check_mark:[/green]")
+            else:
+                logger.error(f"Invalid directive: {directive}")
+                console.print(f"[red]Error: Invalid directive: {directive}. Valid directives: {list(self.directives.keys())} :no_entry_sign:[/red]")
+                raise ValueError(f"Invalid directive: {directive}")
+        except Exception as e:
+            logger.error(f"Error updating directive {directive}: {e}", exc_info=True)
+            #console.print(f"[red]Error updating directive {directive}: {e} :sweat:[/red]")
+            raise
