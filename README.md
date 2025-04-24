@@ -8,46 +8,29 @@
 
 [![GitHub Stars](https://img.shields.io/github/stars/AbuBacker-Ameen/csp-header-generator?style=for-the-badge)](https://github.com/AbuBacker-Ameen/csp-header-generator/stargazers)
 
-An interactive Python CLI tool designed to effortlessly generate secure and
-precise Content Security Policy (CSP) headers. The tool scans HTML files,
-extracts inline script hashes, and provides ready-to-use CSP header
-configurations, ideal for static sites and general web projects.
+A Python tool to generate Content Security Policy (CSP) headers for web
+applications by scanning HTML files or remote websites for inline scripts,
+styles, and external resources. Built with `rich` for a polished CLI experience
+and `BeautifulSoup` for HTML parsing. ideal for static sites and general web
+projects.
 
----
+## Status
+
+- **Generate Command**: Fully tested and functional. Scans HTML files or
+  websites, computes SHA256 hashes for inline scripts/styles, and generates CSP
+  headers with a detailed summary report.
+- **Other Commands**: Under development. Commands like `validate` and `fetch`
+  require further refinement and code fixes for reliability.
 
 ## Features
 
-- **Interactive CLI**: Built with `typer`, offering prompts when flags are
-  omitted but fully scriptable via flags.
-- **Automatic Script Hashing**: Scans HTML files and computes SHA256-based,
-  Base64-encoded hashes for inline scripts.
-- **Header Validation**: Compare existing CSP headers against current HTML
-  script hashes to detect discrepancies.
-- **Website Fetching**: (Future) Fetch live sites by URL and generate a tailored
-  CSP report and header.
-- **Dockerized Environment**: Ensures reproducibility and isolation for
-  development and production.
-- **Enhanced Logging**: User-friendly, informative output powered by `rich`.
-- **Customizable**: Full CLI configuration for all CSP directives with sensible
-  defaults based on recommended security practices.
-
----
-
-## TO-DO
-
-1. **Full CSP Customization**: Enable end-to-end CSP header configuration from
-   the CLI, exposing every directive (scripts, styles, images, etc.) with a
-   secure recommended default.
-2. **Remote Site Analysis**: Add a command to fetch a website by URL, scan its
-   resources, and produce both a validation report and a correct CSP header
-   tailored to that site.
-
----
-
-## Prerequisites
-
-- Docker (with Compose)
-- Python 3.12 (Dockerized)
+- Scans local HTML files or directories for inline scripts and styles.
+- Fetches and analyzes remote websites for CSP-relevant resources.
+- Computes SHA256 hashes for inline content to include in CSP headers.
+- Generates comprehensive CSP headers with default secure directives.
+- Displays a styled summary report with metrics (e.g., files processed, unique
+  hashes).
+- Logs actions to `csp_generator.log` for debugging.
 
 ---
 
@@ -60,7 +43,7 @@ configurations, ideal for static sites and general web projects.
 │   ├── csp_generator.py       # Core hashing & validation logic
 │   └── utils.py               # Shared helpers (logging)
 ├── tests/
-│   └── test_csp_generator.py  # Unit tests (TO-DO)
+│   └── test_csp_generator.py  # Unit tests (Need some work)
 ├── Dockerfile                 # Docker setup for the app
 ├── docker-compose.yml         # Compose for development & production
 ├── requirements.txt           # Python dependencies
@@ -70,77 +53,86 @@ configurations, ideal for static sites and general web projects.
 
 ---
 
-## Quick Start
+## Prerequisites
+
+- Python 3.12+
+- Dependencies:
+- - `typer` (for CLI)
+  - `rich` (for CLI output)
+  - `beautifulsoup4` (for HTML parsing)
+  - `requests` (for fetching remote sites)
+  - `pytest` & `requests_mock` (for running tests)
+
+## Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/AbuBacker-Ameen/csp-header-generator.git
+   cd csp-header-generator
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. (Optional) Set up Docker:
+
+   ```bash
+   docker-compose build
+   ```
+
+## Usage
+
+Run the `generate` command to scan and generate CSP headers:
 
 ```bash
-git clone https://github.com/AbuBacker-Ameen/csp-header-generator.git
-cd csp-header-generator
-
-docker-compose up --build    # Build & show help by default
+python -m app.cli generate -p ./public
 ```
 
-### Scripted Run
+Or with Docker:
 
 ```bash
-docker-compose run --rm app generate --path ./public --output ./csp.conf
+docker-compose run --rm app generate -p ./public
 ```
 
----
+Example output:
 
-## CLI Commands
+```txt
+    CSP Generation Report 🎯
+═════╤══════════════════════════════════════╤═══════
+     │ Metric                               │ Value
+═════╪══════════════════════════════════════╪═══════
+     │ Files Processed 📄                   │   3
+     │ Files With No inline scripts or      │   0
+     │ styles 📜                           │
+     │ Unique Script Hashes 🛠              │   2
+     │ Unique Style Hashes 🎨              │   1
+     │ External Scripts 🌐                 │   1
+     │ External Styles 🎨                  │   0
+     │ External Images 🖼                  │   0
+═════╧══════════════════════════════════════╧═══════
+✨ CSP Header Generated Successfully!
+```
 
-### `generate`
+**Note**: Other commands (`validate`, `fetch`) are experimental and may not work
+as expected. Will Work on it.
 
-Generate CSP headers:
+## Running Tests
+
+Run the test suite:
 
 ```bash
-csp-header-gen generate \
-  --path <HTML_DIRECTORY> \
-  --output <HEADER_FILE>
+pytest -v
 ```
 
-### `validate`
+## Known Issues
 
-Validate an existing CSP header file against current HTML scripts:
-
-```bash
-csp-header-gen validate \
-  --path <HTML_DIRECTORY> \
-  --file <HEADER_FILE>
-```
-
-### `version`
-
-Show tool version:
-
-```bash
-csp-header-gen version
-```
-
----
-
-## Docker Usage
-
-- **Development** (interactive CLI):
-
-  ```bash
-  docker-compose run --rm app generate
-  ```
-
-- **Production/CI** (non-interactive):
-
-  ```yaml
-  services:
-    app:
-    build: .
-    volumes:
-      - ./:/app
-      - /Users/example/my-site:/data:ro # mount your site here
-     command: ['generate', '--path', '/data', '--output', '/app/csp.conf']
-  ```
-
----
+- `validate` and `fetch` commands are incomplete and may fail.
+- Test coverage is limited to the `generate` command.
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+MIT License. See `LICENSE` for details.
