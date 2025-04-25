@@ -7,7 +7,7 @@ import sys
 import logging, datetime
 
 app = typer.Typer(
-    name="csp-header-gen",
+    name="hashcsp",
     help="Interactive CLI tool to generate secure Content Security Policy headers.",
     no_args_is_help=True,
     rich_markup_mode="rich",
@@ -195,6 +195,10 @@ def fetch(
 def version():
     """Show the tool version."""
     console.print(f"[cyan]CSP Header Generator v{__version__} :sparkles:[/cyan]")
+
+
+def main():
+    app()
 
 if __name__ == "__main__":
     app()

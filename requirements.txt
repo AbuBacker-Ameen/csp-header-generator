@@ -1,6 +1,0 @@
-typer
-beautifulsoup4
-rich
-requests
-pytest
-requests_mock

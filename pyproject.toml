@@ -1,0 +1,26 @@
+[project]
+name = "hashcsp"
+version = "0.2.0"
+description = "Interactive CLI tool to generate secure Content Security Policy headers"
+authors = [
+    {name = "Ameen AB."}
+]
+license = {file = "License"}
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "typer (>=0.15.2,<0.16.0)",
+    "beautifulsoup4 (>=4.13.4,<5.0.0)",
+    "rich (>=14.0.0,<15.0.0)",
+    "requests (>=2.32.3,<3.0.0)",
+    "pytest (>=8.3.5,<9.0.0)",
+    "requests-mock (>=1.12.1,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+hashcsp = "hashcsp.cli:main"

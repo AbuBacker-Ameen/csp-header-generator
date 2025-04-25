@@ -1,12 +1,12 @@
 # CSP Header Generator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://github.com/AbuBacker-Ameen/csp-header-generator/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://github.com/AbuBacker-Ameen/HashCSP/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/downloads/release/python-3120/)
 [![Typer](https://img.shields.io/badge/Made%20with-Typer-04AA6D?logo=python)](https://typer.tiangolo.com/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)](https://github.com/AbuBacker-Ameen/csp-header-generator/blob/main/Dockerfile)
-[![GitHub Issues](https://img.shields.io/github/issues/AbuBacker-Ameen/csp-header-generator)](https://github.com/AbuBacker-Ameen/csp-header-generator/issues)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)](https://github.com/AbuBacker-Ameen/HashCSP/blob/main/Dockerfile)
+[![GitHub Issues](https://img.shields.io/github/issues/AbuBacker-Ameen/HashCSP)](https://github.com/AbuBacker-Ameen/HashCSP/issues)
 
-[![GitHub Stars](https://img.shields.io/github/stars/AbuBacker-Ameen/csp-header-generator?style=for-the-badge)](https://github.com/AbuBacker-Ameen/csp-header-generator/stargazers)
+[![GitHub Stars](https://img.shields.io/github/stars/AbuBacker-Ameen/HashCSP?style=for-the-badge)](https://github.com/AbuBacker-Ameen/HashCSP/stargazers)
 
 A Python tool to generate Content Security Policy (CSP) headers for web
 applications by scanning HTML files or remote websites for inline scripts,
@@ -68,8 +68,8 @@ projects.
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/AbuBacker-Ameen/csp-header-generator.git
-   cd csp-header-generator
+   git clone https://github.com/AbuBacker-Ameen/HashCSP.git
+   cd HashCSP
    ```
 
 2. Install dependencies:
