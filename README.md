@@ -1,52 +1,60 @@
-# CSP Header Generator
+# hashcsp
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://github.com/AbuBacker-Ameen/HashCSP/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/downloads/release/python-3120/)
 [![Typer](https://img.shields.io/badge/Made%20with-Typer-04AA6D?logo=python)](https://typer.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)](https://github.com/AbuBacker-Ameen/HashCSP/blob/main/Dockerfile)
 [![GitHub Issues](https://img.shields.io/github/issues/AbuBacker-Ameen/HashCSP)](https://github.com/AbuBacker-Ameen/HashCSP/issues)
-
 [![GitHub Stars](https://img.shields.io/github/stars/AbuBacker-Ameen/HashCSP?style=for-the-badge)](https://github.com/AbuBacker-Ameen/HashCSP/stargazers)
 
-A Python tool to generate Content Security Policy (CSP) headers for web
-applications by scanning HTML files or remote websites for inline scripts,
-styles, and external resources. Built with `rich` for a polished CLI experience
-and `BeautifulSoup` for HTML parsing. ideal for static sites and general web
-projects.
+**`hashcsp`** is a Python CLI tool to generate strong, hash-based Content
+Security Policy (CSP) headers for web applications. It scans HTML files (local
+or remote) for inline scripts, styles, and external resources. It’s ideal for
+static sites, hardened deployments, and secure-by-default pipelines. **Future
+updates will also add support for dynamic websites that generate content at
+runtime.**
+
+Built with [Typer](https://typer.tiangolo.com/) for a clean CLI,
+[Rich](https://github.com/Textualize/rich) for styled output, and
+[BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/) for parsing
+HTML.
+
+---
 
 ## Status
 
-- **Generate Command**: Fully tested and functional. Scans HTML files or
-  websites, computes SHA256 hashes for inline scripts/styles, and generates CSP
-  headers with a detailed summary report.
-- **Other Commands**: Under development. Commands like `validate` and `fetch`
-  require further refinement and code fixes for reliability.
+- **`generate` command**: Fully functional. Scans HTML content, computes SHA256
+  hashes for inline content, and builds a secure CSP header.
+- **Other commands (`validate`, `fetch`, etc.)**: Under development.
+
+---
 
 ## Features
 
-- Scans local HTML files or directories for inline scripts and styles.
-- Fetches and analyzes remote websites for CSP-relevant resources.
-- Computes SHA256 hashes for inline content to include in CSP headers.
-- Generates comprehensive CSP headers with default secure directives.
-- Displays a styled summary report with metrics (e.g., files processed, unique
-  hashes).
-- Logs actions to `csp_generator.log` for debugging.
+- Scans local or remote HTML sources
+- Computes CSP-safe SHA256 hashes for inline scripts and styles
+- Outputs a production-ready CSP header string
+- Logs actions to `csp_generator.log`
+- CLI-first; supports Docker and Poetry installs
+- Fancy, readable reports via Rich
+- Future: Support for dynamic content and JavaScript-heavy websites
 
 ---
 
 ## Repository Structure
 
 ```plaintext
-├── app/
+├── hashcsp/
 │   ├── __init__.py            # Package entry point
-│   ├── cli.py                 # Typer-based CLI definitions
-│   ├── csp_generator.py       # Core hashing & validation logic
+│   ├── cli.py                 # Main Typer-based CLI entry point
+│   ├── csp_generator.py       # Core hashing & logic
 │   └── utils.py               # Shared helpers (logging)
 ├── tests/
 │   └── test_csp_generator.py  # Unit tests (Need some work)
-├── Dockerfile                 # Docker setup for the app
-├── docker-compose.yml         # Compose for development & production
-├── requirements.txt           # Python dependencies
+├── Dockerfile                 # Docker build file
+├── docker-compose.yml         # Optional Docker orchestration
+├── pyproject.toml             # Poetry-managed metadata and dependencies
+├── poetry.lock                # poetry.lock file
 ├── README.md                  # Project documentation (this file)
 └── LICENSE                    # MIT License
 ```
@@ -56,14 +64,40 @@ projects.
 ## Prerequisites
 
 - Python 3.12+
-- Dependencies:
-- - `typer` (for CLI)
-  - `rich` (for CLI output)
-  - `beautifulsoup4` (for HTML parsing)
-  - `requests` (for fetching remote sites)
-  - `pytest` & `requests_mock` (for running tests)
+- [Poetry](https://python-poetry.org/) for dependency and CLI management
 
-## Installation
+### What is Poetry?
+
+[**Poetry**](https://python-poetry.org/) is a modern dependency and package
+manager for Python. It simplifies:
+
+- Installing and managing dependencies
+- Creating and using virtual environments automatically
+- Building and publishing Python packages (like `hashcsp`)
+- Managing tool versioning via `pyproject.toml`
+
+It’s a cleaner alternative to using `pip` and `requirements.txt`.
+
+#### How to Install Poetry
+
+1. Run the official install script:
+
+   ```bash
+   curl -sSL https://install.python-poetry.org | python3 -
+   ```
+
+2. Add Poetry to your shell environment if needed (it tells you how after
+   install), or restart your terminal.
+
+3. Verify it worked:
+
+```bash
+poetry --version
+```
+
+---
+
+## Installation (Recommended: Poetry)
 
 1. Clone the repository:
 
@@ -72,33 +106,50 @@ projects.
    cd HashCSP
    ```
 
-2. Install dependencies:
+2. Install with Poetry:
 
    ```bash
-   pip install -r requirements.txt
+   poetry install
+   eval $(poetry env activate) # To activate poetry environment
    ```
 
-3. (Optional) Set up Docker:
+   Now you can run:
 
    ```bash
-   docker-compose build
+   hashcsp --help
    ```
+
+   Or call it directly:
+
+   ```bash
+   poetry run hashcsp generate -p ./public
+   ```
+
+---
+
+## Docker Alternative
+
+```bash
+docker-compose build
+```
+
+Run:
+
+```bash
+docker-compose run --rm hashcsp generate -p ./public
+```
+
+---
 
 ## Usage
 
-Run the `generate` command to scan and generate CSP headers:
+Scan and generate CSP headers:
 
 ```bash
-python -m app.cli generate -p ./public
+hashcsp generate -p ./public
 ```
 
-Or with Docker:
-
-```bash
-docker-compose run --rm app generate -p ./public
-```
-
-Example output:
+Output example:
 
 ```txt
     CSP Generation Report 🎯
@@ -117,22 +168,33 @@ Example output:
 ✨ CSP Header Generated Successfully!
 ```
 
-**Note**: Other commands (`validate`, `fetch`) are experimental and may not work
-as expected. Will Work on it.
+---
 
 ## Running Tests
-
-Run the test suite:
 
 ```bash
 pytest -v
 ```
 
+---
+
 ## Known Issues
 
-- `validate` and `fetch` commands are incomplete and may fail.
-- Test coverage is limited to the `generate` command.
+- `validate`, `fetch` are placeholders and may not function yet
+- No hash support for dynamically-injected scripts (future feature)
+
+---
+
+## TODO / Working On
+
+- Dynamic content scanning using headless browsers (e.g., Playwright)
+- CSP validation and security linting
+- Improved test coverage and CI integration
+- CSP "report-only" policy generation mode
+- Auto-deploy-ready CSP integration helpers (e.g., for Netlify, Nginx)
+
+---
 
 ## License
 
-MIT License. See `LICENSE` for details.
+MIT License. See `LICENSE` file.

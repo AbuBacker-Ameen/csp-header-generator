@@ -1,10 +1,8 @@
 services:
-  app:
+  hashcsp:
+    image: hashcsp
     build: .
     volumes:
-      - ./:/app
       - /Users/example/my-site:/data:ro # mount your site here
     stdin_open: true
     tty: true
-    entrypoint: ['python', '-m', 'app.cli']
-    command: ['--help']
