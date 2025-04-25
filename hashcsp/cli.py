@@ -1,7 +1,7 @@
 import typer
 from rich.console import Console
 from .csp_generator import CSPGenerator
-from . import __version__
+from importlib.metadata import version, PackageNotFoundError
 import os
 import sys
 import logging, datetime
@@ -191,14 +191,34 @@ def fetch(
         console.print(f"[red]Unexpected error in fetch command: {e} :sweat:[/red]")
         raise typer.Exit(code=1)
 
-@app.command(help="Display the version of the CSP Header Generator tool.")
-def version():
-    """Show the tool version."""
-    console.print(f"[cyan]CSP Header Generator v{__version__} :sparkles:[/cyan]")
 
+
+def _version_callback(value: bool):
+    if value:
+        try:
+            current_version = version("hashcsp")
+            console.print(f"[cyan bold]hashcsp v{current_version}[/cyan bold]")
+        except PackageNotFoundError:
+            console.print("[red]Version info not available[/red]")
+        raise typer.Exit()
+
+@app.callback()
+def main(
+    version: bool = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Show the hashcsp version and exit.",
+        callback=_version_callback,
+        is_eager=True,
+    ),
+):
+    """hashcsp - Generate secure Content Security Policies."""
+    pass
 
 def main():
     app()
+
 
 if __name__ == "__main__":
     app()
