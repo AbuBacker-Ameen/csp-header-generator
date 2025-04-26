@@ -5,6 +5,7 @@ from importlib.metadata import version, PackageNotFoundError
 import os
 import sys
 import logging, datetime
+from . import __logfile__
 
 app = typer.Typer(
     name="hashcsp",
@@ -20,7 +21,7 @@ console = Console()
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[logging.FileHandler('csp_generator.log', encoding="utf-8")]
+    handlers=[logging.FileHandler(__logfile__, encoding="utf-8")]
 )
 logger = logging.getLogger(__name__)
 SEP = "\n" + "=" * 80 + "\n"
@@ -172,7 +173,7 @@ def fetch(
             with open(output_file, 'w', encoding='utf-8') as f:
                 f.write(csp_header)
             logger.info(f"CSP header written to {output_file}")
-            console.print(f"[green]CSP header written to {output_file} :memo:[/green]")
+            console.print(f"[green]:small_red_triangle_down: CSP header written to {output_file} :memo:[/green]")
         except PermissionError:
             logger.error(f"Permission denied writing to {output_file}")
             console.print(f"[red]Error: Permission denied writing to {output_file} :no_entry_sign:[/red]")
@@ -182,8 +183,8 @@ def fetch(
             console.print(f"[red]Error writing to {output_file}: {e} :sweat:[/red]")
             raise typer.Exit(code=1)
         
-        console.print("[cyan]Generated CSP Header:[/cyan]")
-        console.print(csp_header)
+        # console.print("[cyan]Generated CSP Header:[/cyan]")
+        # console.print(csp_header)
     except typer.Exit:
         raise
     except Exception as e:

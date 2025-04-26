@@ -1,11 +1,10 @@
-# hashcsp
+# HashCSP
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://github.com/AbuBacker-Ameen/HashCSP/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/downloads/release/python-3120/)
 [![Typer](https://img.shields.io/badge/Made%20with-Typer-04AA6D?logo=python)](https://typer.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)](https://github.com/AbuBacker-Ameen/HashCSP/blob/main/Dockerfile)
-[![GitHub Issues](https://img.shields.io/github/issues/AbuBacker-Ameen/HashCSP)](https://github.com/AbuBacker-Ameen/HashCSP/issues)
-[![GitHub Stars](https://img.shields.io/github/stars/AbuBacker-Ameen/HashCSP?style=for-the-badge)](https://github.com/AbuBacker-Ameen/HashCSP/stargazers)
+[![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
 
 **`hashcsp`** is a Python CLI tool to generate strong, hash-based Content
 Security Policy (CSP) headers for web applications. It scans HTML files (local
