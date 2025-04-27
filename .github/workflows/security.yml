@@ -1,0 +1,47 @@
+name: Security
+on:
+  pull_request:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bandit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: abatilo/actions-poetry@v3
+      - name: Install (runtime only)
+        run: poetry install --only main
+      - name: Run Bandit
+        run: |
+          poetry run bandit -r hashcsp -o bandit.txt -f txt
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit.txt
+
+  trivy-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy on dependencies
+        uses: aquasecurity/trivy-action@v0.16.1
+        with:
+          scan-type: 'fs'
+          vuln-type: 'library'
+          ignore-unfixed: true
+          format: 'table'
+          output: 'trivy-deps.txt'
+      - name: Upload Trivy deps report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-dependency-report
+          path: trivy-deps.txt
