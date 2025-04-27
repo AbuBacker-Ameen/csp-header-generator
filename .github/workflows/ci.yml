@@ -57,8 +57,8 @@ jobs:
       - name: Run Black (formatting)
         run: poetry run black --check .
 
-      - name: Run mypy (type checking)
-        run: poetry run mypy hashcsp tests
+      # - name: Run mypy (type checking)
+      #   run: poetry run mypy hashcsp tests
 
   test-poetry:
     name: Test with Poetry

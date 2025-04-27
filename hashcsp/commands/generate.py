@@ -48,7 +48,7 @@ def generate(
         help="Directory containing HTML files to scan (e.g., ./public)",
     ),
     output: str = typer.Option(
-        None, "--output", "-o", help="Output file for CSP header (defaults to csp.conf)"
+        "csp.conf", "--output", "-o", help="Output file for CSP header (defaults to csp.conf)"
     ),
     directives: str = typer.Option(
         None,
