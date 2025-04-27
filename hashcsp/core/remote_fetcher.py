@@ -1,10 +1,14 @@
 import logging
+import re
 from typing import Dict, List, Optional
 
 from bs4 import BeautifulSoup, Tag
 from playwright.async_api import Browser, Page, async_playwright
+from rich.console import Console
 
 from .csp_generator import CSPGenerator
+
+console = Console()
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +19,21 @@ class RemoteFetcher:
 
     async def fetch_remote_site(self, url: str, wait_time: int) -> bool:
         """Fetch a website and extract resources."""
+        # Validate URL protocol
+        if not re.match(r"^https?://", url):
+            suggested_url = (
+                f"https://{url}" if not url.startswith("http://") else f"http://{url}"
+            )
+            logger.error(
+                f"Invalid URL: '{url}'. URLs must start with 'http://' or 'https://'. "
+                f"Did you mean '{suggested_url}'?"
+            )
+            console.print(
+                f"[red]Invalid URL: '{url}'. URLs must start with 'http://' or 'https://'. [/red]\n"
+                f"[yellow]Did you mean '{suggested_url}'?[/yellow]"
+            )
+            return False
+
         try:
             async with async_playwright() as p:
                 browser: Browser = await p.chromium.launch(headless=True)
@@ -42,7 +61,12 @@ class RemoteFetcher:
                 page.on("request", handle_request)
 
                 # Navigate to the URL
-                await page.goto(url, wait_until="networkidle")
+                try:
+                    await page.goto(url, wait_until="networkidle")
+                except Exception as e:
+                    logger.error(f"Failed to fetch {url}: {str(e)}")
+                    await browser.close()
+                    return False
 
                 # Wait for additional resources
                 await page.wait_for_timeout(wait_time * 1000)

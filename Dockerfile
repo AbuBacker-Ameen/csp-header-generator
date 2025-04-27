@@ -18,6 +18,8 @@ COPY hashcsp ./hashcsp
 RUN poetry config virtualenvs.create false \
     && poetry install --only main
 
+RUN playwright install --with-deps
+
 # ---- Default command ----
 ENTRYPOINT ["hashcsp"]
 CMD ["-h"]

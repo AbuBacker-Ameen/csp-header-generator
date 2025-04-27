@@ -6,66 +6,38 @@
 [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)](https://github.com/AbuBacker-Ameen/HashCSP/blob/main/Dockerfile)
 [![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
 
-**`hashcsp`** is a Python CLI tool to generate strong, hash-based Content
-Security Policy (CSP) headers for web applications. It scans HTML files (local
-or remote) for inline scripts, styles, and external resources. It’s ideal for
-static sites, hardened deployments, and secure-by-default pipelines. **Future
-updates will also add support for dynamic websites that generate content at
-runtime.**
+HashCSP is a Python tool designed to generate and validate Content Security
+Policy (CSP) headers for web applications. It helps developers secure their
+websites by creating CSP headers that mitigate risks like Cross-Site Scripting
+(XSS) by specifying trusted sources for scripts, styles, and other resources.
 
-Built with [Typer](https://typer.tiangolo.com/) for a clean CLI,
-[Rich](https://github.com/Textualize/rich) for styled output, and
-[BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/) for parsing
-HTML.
-
----
-
-## Status
-
-- **`generate` command**: Fully functional. Scans HTML content, computes SHA256
-  hashes for inline content, and builds a secure CSP header.
-- **Other commands (`validate`, `fetch`, etc.)**: Under development.
-
----
+HashCSP supports both local file scanning and remote website fetching, making it
+versatile for different workflows. It provides detailed reports and mismatch
+metrics to help you fine-tune your CSP policies.
 
 ## Features
 
-- Scans local or remote HTML sources
-- Computes CSP-safe SHA256 hashes for inline scripts and styles
-- Outputs a production-ready CSP header string
-- Logs actions to `csp_generator.log`
-- CLI-first; supports Docker and Poetry installs
-- Fancy, readable reports via Rich
-- Future: Support for dynamic content and JavaScript-heavy websites
+- **Generate CSP Headers**: Scan local HTML files to generate a CSP header,
+  including hashes for inline scripts and styles, and external resources.
+- **Validate CSP Headers**: Compare an existing CSP header against scanned
+  resources, with detailed mismatch reports and metrics (e.g., missing/extra
+  hashes and links).
+- **Fetch Remote Sites**: Use Playwright to fetch remote websites, extract
+  resources, and generate CSP headers.
+- **User-Friendly Output**: Rich formatting for summary reports and mismatch
+  tables, with limits on large difference tables for readability.
+- **Type Safety**: Fully type-checked codebase using `mypy` for reliability.
+- **Modular Design**: Separated concerns with a dedicated `Printer` class for
+  output formatting.
 
----
+## Installation
 
-## Repository Structure
+### Prerequisites
 
-```plaintext
-├── hashcsp/
-│   ├── __init__.py            # Package entry point
-│   ├── cli.py                 # Main Typer-based CLI entry point
-│   ├── csp_generator.py       # Core hashing & logic
-│   └── utils.py               # Shared helpers (logging)
-├── tests/
-│   └── test_csp_generator.py  # Unit tests (Need some work)
-├── Dockerfile                 # Docker build file
-├── docker-compose.yml         # Optional Docker orchestration
-├── pyproject.toml             # Poetry-managed metadata and dependencies
-├── poetry.lock                # poetry.lock file
-├── README.md                  # Project documentation (this file)
-└── LICENSE                    # MIT License
-```
+- Python 3.8 or higher
+- [Poetry](https://python-poetry.org/) for dependency management
 
----
-
-## Prerequisites
-
-- Python 3.12+
-- [Poetry](https://python-poetry.org/) for dependency and CLI management
-
-### What is Poetry?
+#### What is Poetry?
 
 [**Poetry**](https://python-poetry.org/) is a modern dependency and package
 manager for Python. It simplifies:
@@ -77,7 +49,7 @@ manager for Python. It simplifies:
 
 It’s a cleaner alternative to using `pip` and `requirements.txt`.
 
-#### How to Install Poetry
+##### How to Install Poetry
 
 1. Run the official install script:
 
@@ -94,11 +66,9 @@ It’s a cleaner alternative to using `pip` and `requirements.txt`.
 poetry --version
 ```
 
----
+### Steps
 
-## Installation (Recommended: Poetry)
-
-1. Clone the repository:
+1. **Clone the Repository**:
 
    ```bash
    git clone https://github.com/AbuBacker-Ameen/HashCSP.git
@@ -112,16 +82,17 @@ poetry --version
    eval $(poetry env activate) # To activate poetry environment
    ```
 
-   Now you can run:
+3. Install Playwright Browsers: The fetch command uses Playwright to fetch
+   remote sites. Install the required browsers:
+
+   ```bash
+   playwright install
+   ```
+
+4. Verify Installation: Check that the CLI is working:
 
    ```bash
    hashcsp --help
-   ```
-
-   Or call it directly:
-
-   ```bash
-   poetry run hashcsp generate -p ./public
    ```
 
 ---
@@ -135,65 +106,119 @@ docker-compose build
 Run:
 
 ```bash
-docker-compose run --rm hashcsp generate -p ./public
+docker-compose run --rm hashcsp --help
 ```
 
 ---
 
 ## Usage
 
-Scan and generate CSP headers:
+HashCSP provides three main commands: `generate`, `validate`, and `fetch`. Below
+are examples of how to use each.
+
+### 1. Generate a CSP Header for Local Files
+
+Scan a directory of HTML files to generate a CSP header.
 
 ```bash
 hashcsp generate -p ./public
 ```
 
-Output example:
+- **Options**:
+  - `-p/--path`: Directory containing HTML files (required).
+  - `-o/--output`: Output file for the CSP header (defaults to `csp.conf`).
+  - `-d/--directives`: Comma-separated directive:value pairs (e.g.,
+    `script-src:'self' https://example.com`).
+  - `-f/--directives-file`: File containing directives (one per line, format:
+    `directive:value`).
 
-```txt
-    CSP Generation Report 🎯
-═════╤══════════════════════════════════════╤═══════
-     │ Metric                               │ Value
-═════╪══════════════════════════════════════╪═══════
-     │ Files Processed 📄                   │   3
-     │ Files With No inline scripts or      │   0
-     │ styles 📜                           │
-     │ Unique Script Hashes 🛠              │   2
-     │ Unique Style Hashes 🎨              │   1
-     │ External Scripts 🌐                 │   1
-     │ External Styles 🎨                  │   0
-     │ External Images 🖼                  │   0
-═════╧══════════════════════════════════════╧═══════
-✨ CSP Header Generated Successfully!
-```
+**Example Output**: A `csp.conf` file will be created with the generated CSP
+header, and a summary report will be printed, detailing the number of files
+processed, unique hashes, and external resources.
 
----
+### 2. Validate an Existing CSP Header
 
-## Running Tests
+Compare an existing CSP header against the current state of your files.
 
 ```bash
-pytest -v
+hashcsp validate -p ./public -f csp.conf
 ```
 
----
+- **Options**:
+  - `-p/--path`: Directory containing HTML files (required).
+  - `-f/--file`: File containing the existing CSP header (required).
 
-## Known Issues
+**Example Output**: If there’s a mismatch, HashCSP will display a detailed
+report with:
 
-- `validate`, `fetch` are placeholders and may not function yet
-- No hash support for dynamically-injected scripts (future feature)
+- A "CSP Mismatch Details" table (limited to 10 differences for large policies).
+- A "Mismatch Metrics" table showing counts of missing/extra hashes and links.
+- Suggestions for fixing the CSP header.
 
----
+### 3. Fetch a Remote Site and Generate a CSP Header
 
-## TODO / Working On
+Fetch a website and generate a CSP header based on its resources.
 
-- Dynamic content scanning using headless browsers (e.g., Playwright)
-- CSP validation and security linting
-- Improved test coverage and CI integration
-- CSP "report-only" policy generation mode
-- Auto-deploy-ready CSP integration helpers (e.g., for Netlify, Nginx)
+```bash
+hashcsp fetch -u https://example.com
+```
 
----
+- **Options**:
+  - `-u/--url`: URL of the website to fetch (required).
+  - `-o/--output`: Output file for the CSP header (defaults to `csp.conf`).
+  - `-w/--wait`: Time to wait for additional resources (in seconds, defaults to
+    2).
+
+**Example Output**: A `csp.conf` file will be created with the generated CSP
+header, and a summary report will be printed, similar to the `generate` command.
+
+## Contributing
+
+We welcome contributions to HashCSP! Here’s how to get started:
+
+1. **Fork the Repository**: Fork the project on GitHub and clone your fork:
+
+   ```bash
+   git clone https://github.com/yourusername/hashcsp.git
+   cd hashcsp
+   ```
+
+2. **Set Up the Development Environment**: Install dependencies and Playwright
+   browsers:
+
+   ```bash
+   poetry install
+   poetry run playwright install
+   ```
+
+3. **Create a Feature Branch**:
+
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+4. **Make Changes**:
+
+   - Follow the existing code style and structure.
+   - Add tests for new features or bug fixes.
+   - Run type checks with `mypy`:
+
+     ```bash
+     mypy hashcsp
+     ```
+
+5. **Commit and Push**: Use semantic commit messages (e.g.,
+   `feat: add new feature`, `fix: resolve bug`):
+
+   ```bash
+   git commit -m "feat: add new feature"
+   git push origin feature/your-feature-name
+   ```
+
+6. **Open a Pull Request**: Submit a pull request to the main repository,
+   describing your changes and their impact.
 
 ## License
 
-MIT License. See `LICENSE` file.
+HashCSP is licensed under the MIT License. See the [LICENSE](LICENSE) file for
+details.
