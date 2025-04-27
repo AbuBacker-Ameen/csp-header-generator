@@ -15,6 +15,7 @@ app = typer.Typer(
 
 console = Console()
 
+
 @app.callback(invoke_without_command=True)
 def fetch(
     ctx: typer.Context,

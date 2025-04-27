@@ -16,6 +16,7 @@ app = typer.Typer(
 
 console = Console()
 
+
 def read_directives_file(file_path: str) -> str:
     """Read directives from a file."""
     try:
@@ -38,6 +39,7 @@ def read_directives_file(file_path: str) -> str:
         )
         raise typer.Exit(code=1)
 
+
 @app.callback(invoke_without_command=True)
 def generate(
     ctx: typer.Context,
@@ -48,7 +50,10 @@ def generate(
         help="Directory containing HTML files to scan (e.g., ./public)",
     ),
     output: str = typer.Option(
-        "csp.conf", "--output", "-o", help="Output file for CSP header (defaults to csp.conf)"
+        "csp.conf",
+        "--output",
+        "-o",
+        help="Output file for CSP header (defaults to csp.conf)",
     ),
     directives: str = typer.Option(
         None,
