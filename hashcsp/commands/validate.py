@@ -56,7 +56,7 @@ def validate(
             console.print("[green]CSP validation passed! :white_check_mark:[/green]")
         else:
             console.print("[yellow]CSP header mismatch! :warning:[/yellow]")
-            # Detailed diff report is already printed by validate_csp
+            console.print("[bold cyan]To create the correct CSP header, run the `generate` command with the same path[/bold cyan]")
             raise typer.Exit(code=1)
 
     except typer.Exit:

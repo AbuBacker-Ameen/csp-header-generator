@@ -2,13 +2,9 @@ import hashlib
 import logging
 import os
 from typing import Dict, List
-from rich import box
-from rich.align import Align
-from rich.console import Console
-from rich.table import Table
+from .printer import Printer
 
 logger = logging.getLogger(__name__)
-console = Console()
 
 class CSPGenerator:
     def __init__(self):
@@ -35,6 +31,7 @@ class CSPGenerator:
             "external_styles": 0,
             "external_images": 0,
         }
+        self.printer = Printer(self.stats)
 
     def compute_hash(self, content: str, source: str) -> str:
         """Compute the SHA256 hash of a script or style content."""
@@ -54,66 +51,6 @@ class CSPGenerator:
                 self.directives[directive].append(source)
                 logger.info(f"Added {source} to {directive}")
 
-    def _print_summary_report(self):
-        """Print a summary report of CSP generation stats."""
-        if os.environ.get("CSP_PLAIN_OUTPUT") == "1":
-            print("CSP Generation Report :dart:")
-            print(f"Files Processed :page_facing_up: : {self.stats['files_processed']}")
-            print(
-                f"Files With No inline scripts or styles :scroll: : {self.stats['files_with_no_inline_scripts']}"
-            )
-            print(
-                f"Unique Script Hashes :hammer_and_wrench: : {self.stats['unique_script_hashes']}"
-            )
-            print(f"Unique Style Hashes :art: : {self.stats['unique_style_hashes']}")
-            print(
-                f"External Scripts :globe_with_meridians: : {self.stats['external_scripts']}"
-            )
-            print(f"External Styles :art: : {self.stats['external_styles']}")
-            print(f"External Images :framed_picture: : {self.stats['external_images']}")
-            print(":sparkles: CSP Header Generated Successfully!")
-        else:
-            table = Table(
-                title="CSP Generation Report :dart:",
-                box=box.MINIMAL_DOUBLE_HEAD,
-                title_justify="center",
-                title_style="bold bright_cyan",
-                show_header=True,
-                header_style="bold magenta",
-                pad_edge=False,
-                row_styles=("none", "yellow"),
-                expand=True,
-            )
-            table.add_column(
-                "Metric", justify="center", style="cyan", no_wrap=True, ratio=2
-            )
-            table.add_column("Value", justify="center", style="green", overflow="fold")
-            rows = [
-                ("Files Processed :page_facing_up: ", self.stats["files_processed"]),
-                (
-                    "Files With No inline scripts or styles :scroll: ",
-                    self.stats["files_with_no_inline_scripts"],
-                ),
-                (
-                    "Unique Script Hashes :hammer_and_wrench: ",
-                    self.stats["unique_script_hashes"],
-                ),
-                ("Unique Style Hashes :art: ", self.stats["unique_style_hashes"]),
-                (
-                    "External Scripts :globe_with_meridians:",
-                    self.stats["external_scripts"],
-                ),
-                ("External Styles :art:", self.stats["external_styles"]),
-                ("External Images :framed_picture:", self.stats["external_images"]),
-            ]
-            for metric, value in rows:
-                style = "bold red" if value == 0 else ""
-                table.add_row(Align.left(metric), Align.center(str(value)), style=style)
-            console.print(Align.center(table))
-            console.print(
-                "[bold green]:sparkles: CSP Header Generated Successfully! [/bold green]"
-            )
-
     def generate_csp(self, report: bool = True) -> str:
         """Generate the CSP header string."""
         csp_parts = []
@@ -132,7 +69,7 @@ class CSPGenerator:
         logger.info("Generated CSP header: %s", csp_header)
 
         if report:
-            self._print_summary_report()
+            self.printer.print_summary_report()
 
         return csp_header
 
@@ -155,83 +92,6 @@ class CSPGenerator:
                     logger.warning(f"Invalid CSP directive format: {part}")
                     continue
         return directives
-
-    def _print_csp_diff(
-        self, existing: Dict[str, List[str]], generated: Dict[str, List[str]]
-    ):
-        """Print a detailed report of CSP differences."""
-        if os.environ.get("CSP_PLAIN_OUTPUT") == "1":
-            print("CSP Mismatch Details :warning:")
-            all_directives = set(existing.keys()) | set(generated.keys())
-            for directive in sorted(all_directives):
-                existing_sources = set(existing.get(directive, []))
-                generated_sources = set(generated.get(directive, []))
-                missing = generated_sources - existing_sources
-                extra = existing_sources - generated_sources
-                if missing or extra:
-                    missing_str = ", ".join(sorted(missing)) if missing else "-"
-                    extra_str = ", ".join(sorted(extra)) if extra else "-"
-                    print(f"Directive: {directive}")
-                    print(f"Missing in Existing: {missing_str}")
-                    print(f"Extra in Existing: {extra_str}")
-            missing_directives = set(generated.keys()) - set(existing.keys())
-            extra_directives = set(existing.keys()) - set(generated.keys())
-            if missing_directives:
-                print(
-                    f"Directives missing in existing CSP: {', '.join(sorted(missing_directives))} :no_entry_sign:"
-                )
-            if extra_directives:
-                print(
-                    f"Extra directives in existing CSP: {', '.join(sorted(extra_directives))} :warning:"
-                )
-        else:
-            table = Table(
-                title="CSP Mismatch Details :warning:",
-                box=box.MINIMAL_DOUBLE_HEAD,
-                title_justify="center",
-                title_style="bold yellow",
-                show_header=True,
-                header_style="bold magenta",
-                pad_edge=False,
-                expand=True,
-            )
-            table.add_column("Directive", justify="center", style="cyan", no_wrap=True)
-            table.add_column("Missing in Existing", justify="left", style="red")
-            table.add_column("Extra in Existing", justify="left", style="yellow")
-
-            all_directives = set(existing.keys()) | set(generated.keys())
-            for directive in sorted(all_directives):
-                existing_sources = set(existing.get(directive, []))
-                generated_sources = set(generated.get(directive, []))
-
-                missing = generated_sources - existing_sources
-                extra = existing_sources - generated_sources
-
-                if missing or extra:
-                    missing_str = ", ".join(sorted(missing)) if missing else "-"
-                    extra_str = ", ".join(sorted(extra)) if extra else "-"
-                    table.add_row(directive, missing_str, extra_str)
-
-            if table.row_count == 0:
-                console.print(
-                    "[yellow]No specific differences found in directives, but CSP strings differ.[/yellow]"
-                )
-            else:
-                console.print(Align.center(table))
-
-            missing_directives = set(generated.keys()) - set(existing.keys())
-            extra_directives = set(existing.keys()) - set(generated.keys())
-            if missing_directives:
-                console.print(
-                    f"[red]Directives missing in existing CSP: {', '.join(sorted(missing_directives))} :no_entry_sign:[/red]"
-                )
-            if extra_directives:
-                console.print(
-                    f"[yellow]Extra directives in existing CSP: {', '.join(sorted(extra_directives))} :warning:[/yellow]"
-                )
-            console.print(
-                "[bold cyan]To create the correct CSP header, run the `generate` command with the same path[/bold cyan]"
-            )
 
     def validate_csp(self, csp_file: str, path: str) -> bool:
         """Validate a CSP header against scanned resources."""
@@ -266,5 +126,5 @@ class CSPGenerator:
             # Parse and compare CSPs
             existing_directives = self._parse_csp(existing_csp)
             generated_directives = self._parse_csp(new_csp)
-            self._print_csp_diff(existing_directives, generated_directives)
+            self.printer.print_csp_diff(existing_directives, generated_directives)
             return False
