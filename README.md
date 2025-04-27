@@ -157,20 +157,52 @@ report with:
 
 ### 3. Fetch a Remote Site and Generate a CSP Header
 
-Fetch a website and generate a CSP header based on its resources.
+Fetch a website, retrieve its CSP header (if any), and generate a computed CSP
+header based on its resources. Supports dynamic websites with user interaction
+simulation.
 
 ```bash
-hashcsp fetch -u https://example.com
+hashcsp fetch -u https://developer.mozilla.org --compare --interaction-level 2 --retries 3
 ```
 
 - **Options**:
-  - `-u/--url`: URL of the website to fetch (required).
-  - `-o/--output`: Output file for the CSP header (defaults to `csp.conf`).
+  - `-u/--url`: URL of the website to fetch (required). Must include `http://`
+    or `https://`.
+  - `-o/--output`: Output file for the computed CSP header (defaults to
+    `csp.conf`).
   - `-w/--wait`: Time to wait for additional resources (in seconds, defaults to
     2).
+  - `--compare`: Compare the website's CSP header with the computed CSP header.
+  - `-i/--interaction-level`: Level of user interaction (0 = none, 1 = basic
+    scrolling, 2 = advanced clicking/hovering, defaults to 0).
+  - `-r/--retries`: Number of retry attempts for failed fetches (defaults to 2).
 
-**Example Output**: A `csp.conf` file will be created with the generated CSP
-header, and a summary report will be printed, similar to the `generate` command.
+**Example Output**:
+
+```plaintext
+=== Website's CSP Header ===
+default-src 'self'; script-src 'self' https://*.mozilla.org; ...
+
+=== Computed CSP Header ===
+default-src 'self'; script-src 'self' 'sha256-...' https://*.mozilla.org; ...
+
+=== CSP Comparison ===
+[CSP Mismatch Details table and Mismatch Metrics table]
+
+Computed CSP header written to csp.conf
+```
+
+If the website has no CSP header:
+
+```plaintext
+=== Website's CSP Header ===
+No CSP header found in the website's response.
+
+=== Computed CSP Header ===
+default-src 'self'; script-src 'self' 'sha256-...'; ...
+
+Computed CSP header written to csp.conf
+```
 
 ## Contributing
 
