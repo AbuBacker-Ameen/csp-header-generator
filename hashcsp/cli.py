@@ -36,7 +36,7 @@ logger.info(
 # Register commands
 app.add_typer(generate.app, name="generate", )
 app.add_typer(validate.app, name="validate")
-# app.add_typer(fetch.app, name="fetch")
+app.add_typer(fetch.app, name="fetch")
 
 def _version_callback(value: bool):
     if value:
