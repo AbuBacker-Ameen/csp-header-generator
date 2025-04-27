@@ -10,6 +10,12 @@ on:
     branches:
       - '*'
 
+permissions:
+  contents: read
+  issues: read
+  checks: read
+  pull-requests: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -57,6 +63,9 @@ jobs:
   test-poetry:
     name: Test with Poetry
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # for Codecov upload
     strategy:
       matrix:
         python-version: ['3.12', '3.13']
@@ -98,6 +107,8 @@ jobs:
   security:
     name: Security Checks
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -132,6 +143,9 @@ jobs:
     name: Publish to PyPI and GitHub Release
     needs: [lint, test-poetry, security]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required for creating GitHub Releases
+      #id-token: write  #  for potential PyPI OIDC publishing
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout code
