@@ -5,6 +5,7 @@ from rich.console import Console
 
 from .. import __logfile__
 from ..core.csp_generator import CSPGenerator
+from ..core.local_scanner import LocalScanner
 
 app = typer.Typer(
     name="generate",
@@ -67,6 +68,7 @@ def generate(
         return  # Skip if a subcommand is invoked (for future expansion)
 
     csp = CSPGenerator()
+    scanner = LocalScanner(csp)
 
     try:
         # Validate path
@@ -102,8 +104,8 @@ def generate(
                 raise typer.Exit(code=1)
 
         # Scan and generate CSP
-        csp.scan_directory(path)
-        csp_header = csp.generate_csp()
+        scanner.scan_directory(path)
+        csp_header = csp.generate_csp()  # This will print the summary report
 
         # Write output
         output_file = output or "csp.conf"

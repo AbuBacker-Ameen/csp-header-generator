@@ -3,6 +3,7 @@ import typer
 from rich.console import Console
 
 from ..core.csp_generator import CSPGenerator
+from ..core.local_scanner import LocalScanner
 
 app = typer.Typer(
     name="validate",
@@ -50,6 +51,12 @@ def validate(
             raise typer.Exit(code=1)
 
         csp.validate_csp(file, path)
+        console.print("[green]CSP validation passed! :tada:[/green]")
+        # Print the summary report after successful validation
+        csp.generate_csp(report=True)
+    except ValueError as e:
+        console.print(f"[red]CSP validation failed: {e} :sweat:[/red]")
+        raise typer.Exit(code=1)
     except typer.Exit:
         raise
     except Exception as e:
