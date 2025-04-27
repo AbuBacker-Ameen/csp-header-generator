@@ -6,9 +6,9 @@ import pytest
 import requests_mock
 from rich.console import Console
 
-from hashcsp.csp_generator import CSPGenerator
+from ..core.csp_generator import CSPGenerator
 
-from . import __logfile__
+from .. import __logfile__
 
 
 @pytest.fixture

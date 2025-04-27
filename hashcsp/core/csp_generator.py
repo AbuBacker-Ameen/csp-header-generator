@@ -12,7 +12,7 @@ from rich.align import Align
 from rich.console import Console
 from rich.table import Table
 
-from . import __logfile__
+from .. import __logfile__
 
 console = Console()
 
