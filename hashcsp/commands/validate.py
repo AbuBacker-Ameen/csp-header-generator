@@ -50,13 +50,15 @@ def validate(
             )
             raise typer.Exit(code=1)
 
-        csp.validate_csp(file, path)
-        console.print("[green]CSP validation passed! :tada:[/green]")
-        # Print the summary report after successful validation
-        csp.generate_csp(report=True)
-    except ValueError as e:
-        console.print(f"[red]CSP validation failed: {e} :sweat:[/red]")
-        raise typer.Exit(code=1)
+        # Validate CSP
+        success = csp.validate_csp(file, path)
+        if success:
+            console.print("[green]CSP validation passed! :white_check_mark:[/green]")
+        else:
+            console.print("[yellow]CSP header mismatch! :warning:[/yellow]")
+            # Detailed diff report is already printed by validate_csp
+            raise typer.Exit(code=1)
+
     except typer.Exit:
         raise
     except Exception as e:

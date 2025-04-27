@@ -136,7 +136,104 @@ class CSPGenerator:
 
         return csp_header
 
-    def validate_csp(self, csp_file: str, path: str) -> None:
+    def _parse_csp(self, csp: str) -> Dict[str, List[str]]:
+        """Parse a CSP header into a dictionary of directives and sources."""
+        directives: Dict[str, List[str]] = {}
+        if not csp:
+            logger.warning("Empty CSP string provided for parsing")
+            return directives
+        for part in csp.split(";"):
+            part = part.strip()
+            if part:
+                try:
+                    directive, *sources = part.split()
+                    directives[directive] = sources
+                    logger.debug(
+                        f"Parsed directive: {directive} with sources: {sources}"
+                    )
+                except ValueError:
+                    logger.warning(f"Invalid CSP directive format: {part}")
+                    continue
+        return directives
+
+    def _print_csp_diff(
+        self, existing: Dict[str, List[str]], generated: Dict[str, List[str]]
+    ):
+        """Print a detailed report of CSP differences."""
+        if os.environ.get("CSP_PLAIN_OUTPUT") == "1":
+            print("CSP Mismatch Details :warning:")
+            all_directives = set(existing.keys()) | set(generated.keys())
+            for directive in sorted(all_directives):
+                existing_sources = set(existing.get(directive, []))
+                generated_sources = set(generated.get(directive, []))
+                missing = generated_sources - existing_sources
+                extra = existing_sources - generated_sources
+                if missing or extra:
+                    missing_str = ", ".join(sorted(missing)) if missing else "-"
+                    extra_str = ", ".join(sorted(extra)) if extra else "-"
+                    print(f"Directive: {directive}")
+                    print(f"Missing in Existing: {missing_str}")
+                    print(f"Extra in Existing: {extra_str}")
+            missing_directives = set(generated.keys()) - set(existing.keys())
+            extra_directives = set(existing.keys()) - set(generated.keys())
+            if missing_directives:
+                print(
+                    f"Directives missing in existing CSP: {', '.join(sorted(missing_directives))} :no_entry_sign:"
+                )
+            if extra_directives:
+                print(
+                    f"Extra directives in existing CSP: {', '.join(sorted(extra_directives))} :warning:"
+                )
+        else:
+            table = Table(
+                title="CSP Mismatch Details :warning:",
+                box=box.MINIMAL_DOUBLE_HEAD,
+                title_justify="center",
+                title_style="bold yellow",
+                show_header=True,
+                header_style="bold magenta",
+                pad_edge=False,
+                expand=True,
+            )
+            table.add_column("Directive", justify="center", style="cyan", no_wrap=True)
+            table.add_column("Missing in Existing", justify="left", style="red")
+            table.add_column("Extra in Existing", justify="left", style="yellow")
+
+            all_directives = set(existing.keys()) | set(generated.keys())
+            for directive in sorted(all_directives):
+                existing_sources = set(existing.get(directive, []))
+                generated_sources = set(generated.get(directive, []))
+
+                missing = generated_sources - existing_sources
+                extra = existing_sources - generated_sources
+
+                if missing or extra:
+                    missing_str = ", ".join(sorted(missing)) if missing else "-"
+                    extra_str = ", ".join(sorted(extra)) if extra else "-"
+                    table.add_row(directive, missing_str, extra_str)
+
+            if table.row_count == 0:
+                console.print(
+                    "[yellow]No specific differences found in directives, but CSP strings differ.[/yellow]"
+                )
+            else:
+                console.print(Align.center(table))
+
+            missing_directives = set(generated.keys()) - set(existing.keys())
+            extra_directives = set(existing.keys()) - set(generated.keys())
+            if missing_directives:
+                console.print(
+                    f"[red]Directives missing in existing CSP: {', '.join(sorted(missing_directives))} :no_entry_sign:[/red]"
+                )
+            if extra_directives:
+                console.print(
+                    f"[yellow]Extra directives in existing CSP: {', '.join(sorted(extra_directives))} :warning:[/yellow]"
+                )
+            console.print(
+                "[bold cyan]To create the correct CSP header, run the `generate` command with the same path[/bold cyan]"
+            )
+
+    def validate_csp(self, csp_file: str, path: str) -> bool:
         """Validate a CSP header against scanned resources."""
         from .local_scanner import LocalScanner  # Import here to avoid circular dependency
 
@@ -148,7 +245,7 @@ class CSPGenerator:
                 existing_csp = f.read().strip()
         except Exception as e:
             logger.error(f"Error reading CSP file {csp_file}: {e}")
-            raise
+            return False
 
         # Scan the directory to collect current resources
         scanner = LocalScanner(self)
@@ -160,8 +257,14 @@ class CSPGenerator:
         # Compare the two CSP headers
         if existing_csp == new_csp:
             logger.info("CSP validation passed: The existing CSP matches the current resources.")
+            return True
         else:
             logger.warning("CSP validation failed: Differences found.")
             logger.warning(f"Existing CSP: {existing_csp}")
             logger.warning(f"Expected CSP: {new_csp}")
-            raise ValueError("CSP validation failed: The existing CSP does not match the current resources.")
+            
+            # Parse and compare CSPs
+            existing_directives = self._parse_csp(existing_csp)
+            generated_directives = self._parse_csp(new_csp)
+            self._print_csp_diff(existing_directives, generated_directives)
+            return False
