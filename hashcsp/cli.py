@@ -6,7 +6,7 @@ import typer
 from rich.console import Console
 
 from . import __logfile__
-from .commands import generate, validate, fetch
+from .commands import fetch, generate, validate
 
 app = typer.Typer(
     name="hashcsp",
@@ -34,9 +34,13 @@ logger.info(
 )
 
 # Register commands
-app.add_typer(generate.app, name="generate", )
+app.add_typer(
+    generate.app,
+    name="generate",
+)
 app.add_typer(validate.app, name="validate")
 app.add_typer(fetch.app, name="fetch")
+
 
 def _version_callback(value: bool):
     if value:
@@ -47,6 +51,7 @@ def _version_callback(value: bool):
             console.print("[red]Version info not available[/red]")
         raise typer.Exit()
 
+
 @app.callback()
 def main(
     version: bool = typer.Option(
@@ -55,11 +60,12 @@ def main(
         "-v",
         help="Show the hashcsp version and exit.",
         callback=_version_callback,
-        is_eager=True
+        is_eager=True,
     ),
 ):
     """hashcsp - Generate secure Content Security Policies."""
     pass
+
 
 if __name__ == "__main__":
     app()

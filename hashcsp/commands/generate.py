@@ -1,9 +1,9 @@
 import os
 import sys
+
 import typer
 from rich.console import Console
 
-from .. import __logfile__
 from ..core.csp_generator import CSPGenerator
 from ..core.local_scanner import LocalScanner
 

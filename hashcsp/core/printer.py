@@ -1,11 +1,13 @@
 import os
-from typing import Dict, List, Set
+from typing import Dict, List
+
 from rich import box
 from rich.align import Align
 from rich.console import Console
 from rich.table import Table
 
 console = Console()
+
 
 class Printer:
     def __init__(self, stats: Dict[str, int]):
@@ -79,8 +81,18 @@ class Printer:
             print("CSP Mismatch Details :warning:")
             all_directives = set(existing.keys()) | set(generated.keys())
             metrics = {
-                "script-src": {"missing_hashes": 0, "extra_hashes": 0, "missing_links": 0, "extra_links": 0},
-                "style-src": {"missing_hashes": 0, "extra_hashes": 0, "missing_links": 0, "extra_links": 0},
+                "script-src": {
+                    "missing_hashes": 0,
+                    "extra_hashes": 0,
+                    "missing_links": 0,
+                    "extra_links": 0,
+                },
+                "style-src": {
+                    "missing_hashes": 0,
+                    "extra_hashes": 0,
+                    "missing_links": 0,
+                    "extra_links": 0,
+                },
                 "img-src": {"missing_links": 0, "extra_links": 0},
                 "connect-src": {"missing_links": 0, "extra_links": 0},
                 "font-src": {"missing_links": 0, "extra_links": 0},
@@ -156,8 +168,18 @@ class Printer:
 
             all_directives = set(existing.keys()) | set(generated.keys())
             metrics = {
-                "script-src": {"missing_hashes": 0, "extra_hashes": 0, "missing_links": 0, "extra_links": 0},
-                "style-src": {"missing_hashes": 0, "extra_hashes": 0, "missing_links": 0, "extra_links": 0},
+                "script-src": {
+                    "missing_hashes": 0,
+                    "extra_hashes": 0,
+                    "missing_links": 0,
+                    "extra_links": 0,
+                },
+                "style-src": {
+                    "missing_hashes": 0,
+                    "extra_hashes": 0,
+                    "missing_links": 0,
+                    "extra_links": 0,
+                },
                 "img-src": {"missing_links": 0, "extra_links": 0},
                 "connect-src": {"missing_links": 0, "extra_links": 0},
                 "font-src": {"missing_links": 0, "extra_links": 0},
@@ -193,10 +215,10 @@ class Printer:
                 table.add_row(directive, missing_str, extra_str)
             if len(differences) > 10:
                 table.add_row(
-                    "...", 
-                    f"[italic]and {len(differences) - 10} more differences not shown[/italic]", 
-                    "", 
-                    style="dim"
+                    "...",
+                    f"[italic]and {len(differences) - 10} more differences not shown[/italic]",
+                    "",
+                    style="dim",
                 )
 
             if table.row_count == 0:
@@ -239,16 +261,26 @@ class Printer:
                 counts = metrics[directive]
                 if any(counts.values()):
                     has_metrics = True
-                    missing_hashes = str(counts.get("missing_hashes", 0)) if "missing_hashes" in counts else "-"
-                    extra_hashes = str(counts.get("extra_hashes", 0)) if "extra_hashes" in counts else "-"
+                    missing_hashes = (
+                        str(counts.get("missing_hashes", 0))
+                        if "missing_hashes" in counts
+                        else "-"
+                    )
+                    extra_hashes = (
+                        str(counts.get("extra_hashes", 0))
+                        if "extra_hashes" in counts
+                        else "-"
+                    )
                     missing_links = str(counts["missing_links"])
                     extra_links = str(counts["extra_links"])
                     metrics_table.add_row(
-                        directive, missing_hashes, extra_hashes, missing_links, extra_links
+                        directive,
+                        missing_hashes,
+                        extra_hashes,
+                        missing_links,
+                        extra_links,
                     )
 
             if has_metrics:
                 console.print("\n")
                 console.print(Align.center(metrics_table))
-
-

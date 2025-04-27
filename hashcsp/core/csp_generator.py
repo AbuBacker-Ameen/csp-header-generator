@@ -1,10 +1,11 @@
 import hashlib
 import logging
-import os
 from typing import Dict, List
+
 from .printer import Printer
 
 logger = logging.getLogger(__name__)
+
 
 class CSPGenerator:
     def __init__(self):
@@ -95,7 +96,9 @@ class CSPGenerator:
 
     def validate_csp(self, csp_file: str, path: str) -> bool:
         """Validate a CSP header against scanned resources."""
-        from .local_scanner import LocalScanner  # Import here to avoid circular dependency
+        from .local_scanner import (
+            LocalScanner,  # Import here to avoid circular dependency
+        )
 
         logger.info(f"Validating CSP from {csp_file} against files in {path}")
 
@@ -116,13 +119,15 @@ class CSPGenerator:
 
         # Compare the two CSP headers
         if existing_csp == new_csp:
-            logger.info("CSP validation passed: The existing CSP matches the current resources.")
+            logger.info(
+                "CSP validation passed: The existing CSP matches the current resources."
+            )
             return True
         else:
             logger.warning("CSP validation failed: Differences found.")
             logger.warning(f"Existing CSP: {existing_csp}")
             logger.warning(f"Expected CSP: {new_csp}")
-            
+
             # Parse and compare CSPs
             existing_directives = self._parse_csp(existing_csp)
             generated_directives = self._parse_csp(new_csp)

@@ -1,9 +1,9 @@
 import os
+
 import typer
 from rich.console import Console
 
 from ..core.csp_generator import CSPGenerator
-from ..core.local_scanner import LocalScanner
 
 app = typer.Typer(
     name="validate",
@@ -13,6 +13,7 @@ app = typer.Typer(
 )
 
 console = Console()
+
 
 @app.callback(invoke_without_command=True)
 def validate(
@@ -56,7 +57,9 @@ def validate(
             console.print("[green]CSP validation passed! :white_check_mark:[/green]")
         else:
             console.print("[yellow]CSP header mismatch! :warning:[/yellow]")
-            console.print("[bold cyan]To create the correct CSP header, run the `generate` command with the same path[/bold cyan]")
+            console.print(
+                "[bold cyan]To create the correct CSP header, run the `generate` command with the same path[/bold cyan]"
+            )
             raise typer.Exit(code=1)
 
     except typer.Exit:

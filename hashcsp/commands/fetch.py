@@ -1,9 +1,8 @@
-import os
 import asyncio
+
 import typer
 from rich.console import Console
 
-from .. import __logfile__
 from ..core.csp_generator import CSPGenerator
 from ..core.remote_fetcher import RemoteFetcher
 

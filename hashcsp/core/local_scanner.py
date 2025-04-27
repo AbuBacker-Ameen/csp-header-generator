@@ -1,10 +1,12 @@
-import os
 import logging
+import os
+
 from bs4 import BeautifulSoup
-from typing import List, Dict
+
 from .csp_generator import CSPGenerator
 
 logger = logging.getLogger(__name__)
+
 
 class LocalScanner:
     def __init__(self, csp_generator: CSPGenerator):

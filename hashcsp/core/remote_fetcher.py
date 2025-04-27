@@ -1,9 +1,11 @@
-import asyncio
 import logging
+
 from playwright.async_api import async_playwright
+
 from .csp_generator import CSPGenerator
 
 logger = logging.getLogger(__name__)
+
 
 class RemoteFetcher:
     def __init__(self, csp_generator: CSPGenerator):
@@ -66,7 +68,8 @@ class RemoteFetcher:
 
                 # Extract inline and DOM-based resources
                 logger.debug("Extracting DOM resources...")
-                page_data = await page.evaluate('''() => {
+                page_data = await page.evaluate(
+                    """() => {
                     const inlineScripts = Array.from(document.querySelectorAll('script:not([src])'))
                         .map(el => el.textContent.trim())
                         .filter(content => content);
@@ -89,7 +92,8 @@ class RemoteFetcher:
                         images,
                         frames,
                     };
-                }''')
+                }"""
+                )
 
                 # Process inline scripts
                 for script in page_data["inlineScripts"]:
