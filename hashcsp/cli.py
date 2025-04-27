@@ -22,7 +22,10 @@ console = Console()
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.FileHandler(__logfile__, encoding="utf-8")],
+    handlers=[
+        logging.FileHandler(__logfile__, encoding="utf-8"),
+        #       logging.StreamHandler()  # Add console handler to print logs to terminal
+    ],
 )
 logger = logging.getLogger(__name__)
 SEP = "\n" + "=" * 80 + "\n"

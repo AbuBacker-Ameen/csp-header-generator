@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import typer
 from rich.console import Console
@@ -8,75 +9,111 @@ from ..core.remote_fetcher import RemoteFetcher
 
 app = typer.Typer(
     name="fetch",
-    help="Fetch a website by URL, analyze its resources, and generate a tailored CSP header. Outputs a detailed report.",
+    help="Fetch a remote website, retrieve its CSP header, and generate a computed CSP header.",
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 @app.callback(invoke_without_command=True)
 def fetch(
-    ctx: typer.Context,
     url: str = typer.Option(
-        None,
+        ...,
         "--url",
         "-u",
-        help="Website URL to fetch and analyze (e.g., https://example.com)",
+        help="URL of the website to fetch. Must include 'http://' or 'https://'.",
     ),
     output: str = typer.Option(
-        None, "--output", "-o", help="Output file for CSP header (defaults to csp.conf)"
+        "csp.conf", "--output", "-o", help="Output file for the computed CSP header."
     ),
-    wait_time: int = typer.Option(
-        2,
-        "--wait-time",
-        "-w",
-        help="Time in seconds to wait for additional resources after page load (default: 2)",
+    wait: int = typer.Option(
+        2, "--wait", "-w", help="Time to wait for additional resources (seconds)."
+    ),
+    compare: bool = typer.Option(
+        False,
+        "--compare",
+        help="Compare the website's CSP header with the computed CSP header.",
+    ),
+    interaction_level: int = typer.Option(
+        0,
+        "--interaction-level",
+        "-i",
         min=0,
+        max=2,
+        help="Level of user interaction (0 = none, 1 = basic, 2 = advanced).",
+    ),
+    retries: int = typer.Option(
+        2, "--retries", "-r", help="Number of retry attempts for failed fetches."
     ),
 ):
-    """Fetch a website and generate a CSP header."""
-    if ctx.invoked_subcommand is not None:
-        return  # Skip if a subcommand is invoked (for future expansion)
+    """Fetch a remote website, retrieve its CSP header, and generate a computed CSP header."""
+
+    # Setup logging handler to capture errors for display
+    class CLILogHandler(logging.Handler):
+        def __init__(self):
+            super().__init__()
+            self.error_messages: list[str] = []
+
+        def emit(self, record):
+            if record.levelno >= logging.ERROR:
+                self.error_messages.append(self.format(record))
+
+    cli_handler = CLILogHandler()
+    cli_handler.setFormatter(logging.Formatter("%(levelname)s:%(name)s: %(message)s"))
+    logger.addHandler(cli_handler)
+
+    # Clear any previous error messages
+    cli_handler.error_messages.clear()
 
     csp = CSPGenerator()
     fetcher = RemoteFetcher(csp)
 
+    # Fetch the site and get the website's CSP header
+    loop = asyncio.get_event_loop()
+    success, website_csp_header = loop.run_until_complete(
+        fetcher.fetch_remote_site(url, wait, interaction_level, retries)
+    )
+
+    if not success:
+        # Display any captured error messages
+        if cli_handler.error_messages:
+            for msg in cli_handler.error_messages:
+                console.print(f"[red]{msg}[/red]")
+        else:
+            console.print(f"[red]Failed to fetch {url}. No CSP header generated.[/red]")
+        raise typer.Exit(code=1)
+
+    # Display the website's CSP header (if any)
+    console.print("\n=== Website's CSP Header ===")
+    if website_csp_header:
+        console.print(website_csp_header)
+    else:
+        console.print("No CSP header found in the website's response.")
+
+    # Generate the computed CSP header
+    computed_csp_header = csp.generate_csp(report=True)
+
+    # Display the computed CSP header
+    console.print("\n=== Computed CSP Header ===")
+    console.print(computed_csp_header)
+
+    # Compare the CSP headers if requested
+    if compare and website_csp_header:
+        console.print("\n=== CSP Comparison ===")
+        existing_directives = csp._parse_csp(website_csp_header)
+        generated_directives = csp._parse_csp(computed_csp_header)
+        csp.printer.print_csp_diff(existing_directives, generated_directives)
+    elif compare and not website_csp_header:
+        console.print("Cannot compare: No CSP header found in the website's response.")
+
+    # Write the computed CSP header to the output file
     try:
-        if not url:
-            url = typer.prompt("Enter the website URL (e.g., https://example.com)")
-
-        # Fetch and check success
-        console.print(f"[cyan]Fetching website: {url} :globe_with_meridians:[/cyan]")
-        success = asyncio.run(fetcher.fetch_remote_site(url, wait_time))
-        if not success:
-            console.print(
-                f"[red]Failed to fetch {url}. No CSP header generated. :sweat:[/red]"
-            )
-            raise typer.Exit(code=1)
-
-        csp_header = csp.generate_csp()  # This will print the summary report
-
-        # Write output
-        output_file = output or "csp.conf"
-        try:
-            with open(output_file, "w", encoding="utf-8") as f:
-                f.write(csp_header)
-            console.print(
-                f"[green]:small_red_triangle_down: CSP header written to {output_file} :memo:[/green]"
-            )
-        except PermissionError:
-            console.print(
-                f"[red]Error: Permission denied writing to {output_file} :no_entry_sign:[/red]"
-            )
-            raise typer.Exit(code=1)
-        except Exception as e:
-            console.print(f"[red]Error writing to {output_file}: {e} :sweat:[/red]")
-            raise typer.Exit(code=1)
-
-    except typer.Exit:
-        raise
+        with open(output, "w") as f:
+            f.write(computed_csp_header)
+        console.print(f"\nComputed CSP header written to {output}")
     except Exception as e:
-        console.print(f"[red]Unexpected error in fetch command: {e} :sweat:[/red]")
+        console.print(f"[red]Error writing CSP header to {output}: {e}[/red]")
         raise typer.Exit(code=1)
