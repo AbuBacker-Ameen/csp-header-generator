@@ -1,7 +1,7 @@
 import logging
 import os
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from .csp_generator import CSPGenerator
 
@@ -21,6 +21,7 @@ class LocalScanner:
             # Process inline scripts
             inline_scripts = soup.find_all("script", src=False)
             for script in inline_scripts:
+                assert isinstance(script, Tag), f"Expected Tag, got {type(script)}"
                 content = script.string
                 if content and content.strip():
                     hash_value = self.csp.compute_hash(content, file_path)
@@ -32,6 +33,7 @@ class LocalScanner:
             # Process inline styles
             inline_styles = soup.find_all("style")
             for style in inline_styles:
+                assert isinstance(style, Tag), f"Expected Tag, got {type(style)}"
                 content = style.string
                 if content and content.strip():
                     hash_value = self.csp.compute_hash(content, file_path)
@@ -43,24 +45,39 @@ class LocalScanner:
             # Process external scripts
             external_scripts = soup.find_all("script", src=True)
             for script in external_scripts:
+                assert isinstance(script, Tag), f"Expected Tag, got {type(script)}"
                 src = script.get("src")
-                if src and src not in self.csp.directives["script-src"]:
+                if (
+                    src
+                    and isinstance(src, str)
+                    and src not in self.csp.directives["script-src"]
+                ):
                     self.csp.directives["script-src"].append(src)
                     self.csp.stats["external_scripts"] += 1
 
             # Process external styles
             external_styles = soup.find_all("link", rel="stylesheet")
             for style in external_styles:
+                assert isinstance(style, Tag), f"Expected Tag, got {type(style)}"
                 href = style.get("href")
-                if href and href not in self.csp.directives["style-src"]:
+                if (
+                    href
+                    and isinstance(href, str)
+                    and href not in self.csp.directives["style-src"]
+                ):
                     self.csp.directives["style-src"].append(href)
                     self.csp.stats["external_styles"] += 1
 
             # Process images
             images = soup.find_all("img", src=True)
             for img in images:
+                assert isinstance(img, Tag), f"Expected Tag, got {type(img)}"
                 src = img.get("src")
-                if src and src not in self.csp.directives["img-src"]:
+                if (
+                    src
+                    and isinstance(src, str)
+                    and src not in self.csp.directives["img-src"]
+                ):
                     self.csp.directives["img-src"].append(src)
                     self.csp.stats["external_images"] += 1
 
