@@ -14,7 +14,8 @@ dependencies = [
     "rich (>=14.0.0,<15.0.0)",
     "requests-mock (>=1.12.1,<2.0.0)",
     "bandit (>=1.8.3,<2.0.0)",
-    "playwright (>=1.51.0,<2.0.0)"
+    "playwright (>=1.51.0,<2.0.0)",
+    "pydantic (>=2.11.3,<3.0.0)"
 ]
 
 [tool.poetry.group.dev.dependencies]
