@@ -50,6 +50,11 @@ def generate(
         "--json-output",
         help="Output CSP directives as a JSON file instead of a text header.",
     ),
+    lint: bool = typer.Option(
+        False,
+        "--lint",
+        help="Warn about unsafe CSP sources like *, data:, or 'unsafe-inline'.",
+    ),
 ):
     """Generate CSP headers for HTML files."""
     if ctx.invoked_subcommand is not None:
@@ -98,6 +103,16 @@ def generate(
         # Scan and generate CSP
         scanner.scan_directory(path)
         csp_header = csp.generate_csp()
+
+        # Lint directives if enabled
+        if lint:
+            warnings = csp.lint_directives()
+            for warning in warnings:
+                console.print(f"[yellow]Warning: {warning}[/yellow]")
+            if warnings:
+                console.print(f"[yellow]Lint mode: {len(warnings)} unsafe sources detected[/yellow]")
+            else:
+                console.print("[green]Lint mode: No unsafe sources detected[/green]")
 
         # Determine output file and format
         output_file = output or ("csp.json" if json_output else "csp.conf")

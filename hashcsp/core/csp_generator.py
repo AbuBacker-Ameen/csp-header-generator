@@ -56,6 +56,18 @@ class CSPGenerator:
         self.directives[directive] = [source for source in sources if source]
         logger.info(f"Updated {directive} with sources: {self.directives[directive]}")
 
+    def lint_directives(self) -> List[str]:
+        """Check directives for unsafe sources and return warning messages."""
+        unsafe_sources = ["*", "data:", "'unsafe-inline'"]
+        warnings = []
+        for directive, sources in self.directives.items():
+            for source in sources:
+                if source in unsafe_sources:
+                    warning = f"Unsafe source '{source}' found in {directive}"
+                    warnings.append(warning)
+                    logger.warning(warning)
+        return warnings
+
     def generate_csp(self, report: bool = True) -> str:
         """Generate the CSP header string."""
         # If no directives are set, use defaults
@@ -141,3 +153,4 @@ class CSPGenerator:
             generated_directives = self._parse_csp(new_csp)
             self.printer.print_csp_diff(existing_directives, generated_directives)
             return False
+    
