@@ -254,3 +254,5 @@ I welcome contributions to HashCSP, Here’s how to get started:
 
 HashCSP is licensed under the MIT License. See the [LICENSE](LICENSE) file for
 details.
+
+➡️ See [ROADMAP.md](./ROADMAP.md) for upcoming features and plans.

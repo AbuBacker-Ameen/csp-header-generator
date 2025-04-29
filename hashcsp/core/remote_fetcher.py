@@ -190,7 +190,8 @@ class RemoteFetcher:
                 # Process inline scripts
                 inline_scripts = soup.find_all("script", src=False)
                 for script in inline_scripts:
-                    assert isinstance(script, Tag), f"Expected Tag, got {type(script)}"
+                    if not isinstance(script, Tag):
+                        raise TypeError(f"Expected Tag, got {type(script)}")
                     script_content: Optional[str] = script.string
                     if script_content and script_content.strip():
                         hash_value = self.csp.compute_hash(script_content, url)
@@ -205,7 +206,8 @@ class RemoteFetcher:
                 # Process inline styles
                 inline_styles = soup.find_all("style")
                 for style in inline_styles:
-                    assert isinstance(style, Tag), f"Expected Tag, got {type(style)}"
+                    if not isinstance(style, Tag):
+                        raise TypeError(f"Expected Tag, got {type(style)}")
                     style_content: Optional[str] = style.string
                     if style_content and style_content.strip():
                         hash_value = self.csp.compute_hash(style_content, url)

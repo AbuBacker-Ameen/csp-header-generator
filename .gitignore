@@ -236,4 +236,4 @@ csp_headers.conf
 .flake8
 csp.conf
 public/
-public/*
+notes/

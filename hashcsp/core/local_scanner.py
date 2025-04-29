@@ -21,7 +21,8 @@ class LocalScanner:
             # Process inline scripts
             inline_scripts = soup.find_all("script", src=False)
             for script in inline_scripts:
-                assert isinstance(script, Tag), f"Expected Tag, got {type(script)}"
+                if not isinstance(script, Tag):
+                    raise TypeError(f"Expected Tag, got {type(script)}")
                 content = script.string
                 if content and content.strip():
                     hash_value = self.csp.compute_hash(content, file_path)
@@ -33,7 +34,8 @@ class LocalScanner:
             # Process inline styles
             inline_styles = soup.find_all("style")
             for style in inline_styles:
-                assert isinstance(style, Tag), f"Expected Tag, got {type(style)}"
+                if not isinstance(style, Tag):
+                    raise TypeError(f"Expected Tag, got {type(style)}")
                 content = style.string
                 if content and content.strip():
                     hash_value = self.csp.compute_hash(content, file_path)
@@ -45,7 +47,8 @@ class LocalScanner:
             # Process external scripts
             external_scripts = soup.find_all("script", src=True)
             for script in external_scripts:
-                assert isinstance(script, Tag), f"Expected Tag, got {type(script)}"
+                if not isinstance(script, Tag):
+                    raise TypeError(f"Expected Tag, got {type(script)}")
                 src = script.get("src")
                 if (
                     src
@@ -58,7 +61,8 @@ class LocalScanner:
             # Process external styles
             external_styles = soup.find_all("link", rel="stylesheet")
             for style in external_styles:
-                assert isinstance(style, Tag), f"Expected Tag, got {type(style)}"
+                if not isinstance(style, Tag):
+                    raise TypeError(f"Expected Tag, got {type(style)}")
                 href = style.get("href")
                 if (
                     href
@@ -71,7 +75,8 @@ class LocalScanner:
             # Process images
             images = soup.find_all("img", src=True)
             for img in images:
-                assert isinstance(img, Tag), f"Expected Tag, got {type(img)}"
+                if not isinstance(img, Tag):
+                    raise TypeError(f"Expected Tag, got {type(img)}")
                 src = img.get("src")
                 if (
                     src
