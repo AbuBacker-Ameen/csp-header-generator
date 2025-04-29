@@ -235,5 +235,6 @@ $RECYCLE.BIN/
 csp_headers.conf
 .flake8
 csp.conf
+hashcsp.json
 public/
 notes/

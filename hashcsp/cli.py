@@ -7,6 +7,8 @@ from rich.console import Console
 
 from . import __logfile__
 from .commands import fetch, generate, validate
+from .core.config import load_config
+from .core.init import CSPInitializer
 
 app = typer.Typer(
     name="hashcsp",
@@ -24,7 +26,6 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
         logging.FileHandler(__logfile__, encoding="utf-8"),
-        #       logging.StreamHandler()  # Add console handler to print logs to terminal
     ],
 )
 logger = logging.getLogger(__name__)
@@ -37,13 +38,9 @@ logger.info(
 )
 
 # Register commands
-app.add_typer(
-    generate.app,
-    name="generate",
-)
+app.add_typer(generate.app, name="generate")
 app.add_typer(validate.app, name="validate")
 app.add_typer(fetch.app, name="fetch")
-
 
 def _version_callback(value: bool):
     if value:
@@ -54,6 +51,14 @@ def _version_callback(value: bool):
             console.print("[red]Version info not available[/red]")
         raise typer.Exit()
 
+def _init_callback(ctx: typer.Context, init: bool):
+    if init:
+        initializer = CSPInitializer()
+        output_path = ctx.params.get("config") or "hashcsp.json"
+        success = initializer.run(output_path)
+        if not success:
+            raise typer.Exit(code=1)
+        raise typer.Exit()
 
 @app.callback()
 def main(
@@ -65,10 +70,24 @@ def main(
         callback=_version_callback,
         is_eager=True,
     ),
+    init: bool = typer.Option(
+        False,
+        "--init",
+        help="Initialize a new CSP configuration file interactively.",
+        callback=_init_callback,
+        is_eager=True,
+    ),
+    config: str = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to CSP configuration file (default: hashcsp.json).",
+    ),
 ):
     """hashcsp - Generate secure Content Security Policies."""
-    pass
-
+    # Load config and store in context
+    ctx = typer.get_current_context()
+    ctx.obj = {"config": load_config(config)}
 
 if __name__ == "__main__":
     app()

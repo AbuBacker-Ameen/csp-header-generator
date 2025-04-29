@@ -49,7 +49,7 @@ def save_config(config: CSPConfig, path: str = "hashcsp.json") -> bool:
     try:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(config.dict(), f, indent=2)
-        console.print(f"[green]Config saved to {path}[/green]")
+        #console.print(f"[green]Config saved to {path}[/green]")
         logger.info(f"Config saved to {path}")
         return True
     except Exception as e:
