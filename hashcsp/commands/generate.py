@@ -1,11 +1,12 @@
 import json
-import os
-import sys
 import logging
+import os
+from typing import List
+
 import typer
 from rich.console import Console
 
-from ..core.config import load_config, validate_json_config, CSPConfig
+from ..core.config import CSPConfig, validate_json_config
 from ..core.csp_generator import CSPGenerator
 from ..core.local_scanner import LocalScanner
 
@@ -15,8 +16,10 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
-logger = logging.getLogger(__name__)
+
 console = Console()
+logger = logging.getLogger(__name__)
+
 
 @app.callback(invoke_without_command=True)
 def generate(
@@ -73,7 +76,9 @@ def generate(
         if not path:
             path = typer.prompt("Enter the directory containing HTML files")
         if not os.path.exists(path) or not os.path.isdir(path):
-            console.print(f"[red]Error: Directory {path} does not exist or is not a directory :no_entry_sign:[/red]")
+            console.print(
+                f"[red]Error: Directory {path} does not exist or is not a directory :no_entry_sign:[/red]"
+            )
             raise typer.Exit(code=1)
 
         # Load directives from --directives-file (JSON) if provided
@@ -95,13 +100,29 @@ def generate(
         if directives:
             try:
                 for directive_pair in directives.split(","):
-                    if not directive_pair.strip():
+                    directive_pair = directive_pair.strip()
+                    if not directive_pair:
                         continue
-                    directive, sources = directive_pair.split(":")
-                    csp.update_directive(directive.strip(), sources.strip().split())
+                    parts = directive_pair.split(":", 1)  # Split on first ":" only
+                    if len(parts) != 2:
+                        raise ValueError(
+                            f"Invalid directive format: '{directive_pair}'. Expected 'directive:value'"
+                        )
+                    directive, sources_str = parts
+                    directive = directive.strip()
+                    directive_sources: List[str] = [
+                        s for s in sources_str.strip().split() if s
+                    ]
+                    if not directive:
+                        raise ValueError(f"Empty directive in '{directive_pair}'")
+                    if not directive_sources:
+                        raise ValueError(
+                            f"No sources provided for directive '{directive}' in '{directive_pair}'"
+                        )
+                    csp.update_directive(directive, directive_sources)
             except ValueError as e:
                 console.print(
-                    f"[red]Error: Invalid directives format. Use 'directive:value' (e.g., script-src:'self'). Error: {e} :no_entry_sign:[/red]"
+                    f"[red]Error: Invalid directives format. Use 'directive:value' (e.g., script-src:'self' https://example.com). Error: {e} :no_entry_sign:[/red]"
                 )
                 raise typer.Exit(code=1)
 
@@ -115,7 +136,9 @@ def generate(
             for warning in warnings:
                 console.print(f"[yellow]Warning: {warning}[/yellow]")
             if warnings:
-                console.print(f"[yellow]Lint mode: {len(warnings)} unsafe sources detected[/yellow]")
+                console.print(
+                    f"[yellow]Lint mode: {len(warnings)} unsafe sources detected[/yellow]"
+                )
             else:
                 console.print("[green]Lint mode: No unsafe sources detected[/green]")
 
@@ -138,14 +161,20 @@ def generate(
                     config = CSPConfig(directives=csp.directives)
                     with open(output_file, "w", encoding="utf-8") as f:
                         json.dump(config.dict(), f, indent=2)
-                    console.print(f"[green]:small_red_triangle_down: CSP JSON written to {output_file} :memo:[/green]")
+                    console.print(
+                        f"[green]:small_red_triangle_down: CSP JSON written to {output_file} :memo:[/green]"
+                    )
                 else:
                     # Write text-based CSP header
                     with open(output_file, "w", encoding="utf-8") as f:
                         f.write(csp_header)
-                    console.print(f"[green]:small_red_triangle_down: CSP header written to {output_file} :memo:[/green]")
+                    console.print(
+                        f"[green]:small_red_triangle_down: CSP header written to {output_file} :memo:[/green]"
+                    )
         except PermissionError:
-            console.print(f"[red]Error: Permission denied writing to {output_file} :no_entry_sign:[/red]")
+            console.print(
+                f"[red]Error: Permission denied writing to {output_file} :no_entry_sign:[/red]"
+            )
             raise typer.Exit(code=1)
         except Exception as e:
             console.print(f"[red]Error writing to {output_file}: {e} :sweat:[/red]")

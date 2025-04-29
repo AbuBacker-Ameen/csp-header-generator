@@ -4,7 +4,6 @@ import logging
 import typer
 from rich.console import Console
 
-from ..core.config import load_config
 from ..core.csp_generator import CSPGenerator
 from ..core.remote_fetcher import RemoteFetcher
 
@@ -17,6 +16,7 @@ app = typer.Typer(
 
 console = Console()
 logger = logging.getLogger(__name__)
+
 
 @app.callback(invoke_without_command=True)
 def fetch(
@@ -56,6 +56,7 @@ def fetch(
     ),
 ):
     """Fetch a remote website, retrieve its CSP header, and generate a computed CSP header."""
+
     class CLILogHandler(logging.Handler):
         def __init__(self):
             super().__init__()

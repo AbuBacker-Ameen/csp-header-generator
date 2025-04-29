@@ -9,6 +9,7 @@ from rich.console import Console
 logger = logging.getLogger(__name__)
 console = Console()
 
+
 class CSPConfig(BaseModel):
     directives: Dict[str, List[str]] = {
         "default-src": ["'self'"],
@@ -20,6 +21,7 @@ class CSPConfig(BaseModel):
         "media-src": ["'self'"],
         "frame-src": ["'self'"],
     }
+
 
 def load_config(config_path: Optional[str] = None) -> Optional[CSPConfig]:
     """Load CSP configuration from a JSON file."""
@@ -49,6 +51,7 @@ def load_config(config_path: Optional[str] = None) -> Optional[CSPConfig]:
         logger.error(f"Error loading config from {path}: {e}")
         return None
 
+
 def validate_json_config(file_path: str) -> Optional[CSPConfig]:
     """Validate a JSON file against the CSPConfig schema."""
     if not os.path.isfile(file_path):
@@ -75,7 +78,10 @@ def validate_json_config(file_path: str) -> Optional[CSPConfig]:
         logger.error(f"Error reading {file_path}: {e}")
         return None
 
-def save_config(config: CSPConfig, path: str = "hashcsp.json", dry_run: bool = False) -> bool:
+
+def save_config(
+    config: CSPConfig, path: str = "hashcsp.json", dry_run: bool = False
+) -> bool:
     """Save CSP configuration to a JSON file or print for dry-run."""
     try:
         config_json = json.dumps(config.dict(), indent=2)

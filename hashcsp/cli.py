@@ -42,6 +42,7 @@ app.add_typer(generate.app, name="generate")
 app.add_typer(validate.app, name="validate")
 app.add_typer(fetch.app, name="fetch")
 
+
 def _version_callback(value: bool):
     if value:
         try:
@@ -50,6 +51,7 @@ def _version_callback(value: bool):
         except PackageNotFoundError:
             console.print("[red]Version info not available[/red]")
         raise typer.Exit()
+
 
 def _init_callback(value: bool, ctx: typer.Context):
     if value:
@@ -60,6 +62,7 @@ def _init_callback(value: bool, ctx: typer.Context):
         if not success:
             raise typer.Exit(code=1)
         raise typer.Exit()
+
 
 @app.callback()
 def main(
@@ -95,6 +98,7 @@ def main(
     # Initialize context object with config and dry-run
     ctx.obj = {"config": load_config(config), "dry_run": dry_run}
     logger.info(f"Context initialized with config: {config}, dry_run: {dry_run}")
+
 
 if __name__ == "__main__":
     app()

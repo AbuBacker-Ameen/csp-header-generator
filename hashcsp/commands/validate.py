@@ -3,7 +3,6 @@ import os
 import typer
 from rich.console import Console
 
-from ..core.config import load_config
 from ..core.csp_generator import CSPGenerator
 
 app = typer.Typer(
@@ -14,6 +13,7 @@ app = typer.Typer(
 )
 
 console = Console()
+
 
 @app.callback(invoke_without_command=True)
 def validate(
@@ -47,10 +47,14 @@ def validate(
             file = typer.prompt("Enter the CSP header file path")
 
         if not os.path.exists(path) or not os.path.isdir(path):
-            console.print(f"[red]Error: Directory {path} does not exist or is not a directory :no_entry_sign:[/red]")
+            console.print(
+                f"[red]Error: Directory {path} does not exist or is not a directory :no_entry_sign:[/red]"
+            )
             raise typer.Exit(code=1)
         if not os.path.exists(file) or not os.path.isfile(file):
-            console.print(f"[red]Error: File {file} does not exist or is not a file :no_entry_sign:[/red]")
+            console.print(
+                f"[red]Error: File {file} does not exist or is not a file :no_entry_sign:[/red]"
+            )
             raise typer.Exit(code=1)
 
         success = csp.validate_csp(file, path)

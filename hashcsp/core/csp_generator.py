@@ -6,6 +6,7 @@ from .printer import Printer
 
 logger = logging.getLogger(__name__)
 
+
 class CSPGenerator:
     def __init__(self):
         self.hashes: Dict[str, List[str]] = {
@@ -76,7 +77,9 @@ class CSPGenerator:
 
         csp_parts = []
         if self.hashes["script-src"]:
-            self.directives.setdefault("script-src", []).extend(self.hashes["script-src"])
+            self.directives.setdefault("script-src", []).extend(
+                self.hashes["script-src"]
+            )
         if self.hashes["style-src"]:
             self.directives.setdefault("style-src", []).extend(self.hashes["style-src"])
 
@@ -153,4 +156,3 @@ class CSPGenerator:
             generated_directives = self._parse_csp(new_csp)
             self.printer.print_csp_diff(existing_directives, generated_directives)
             return False
-    
