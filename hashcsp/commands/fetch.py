@@ -49,6 +49,11 @@ def fetch(
     retries: int = typer.Option(
         2, "--retries", "-r", help="Number of retry attempts for failed fetches."
     ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview CSP output without writing to disk.",
+    ),
 ):
     """Fetch a remote website, retrieve its CSP header, and generate a computed CSP header."""
     class CLILogHandler(logging.Handler):
@@ -105,10 +110,15 @@ def fetch(
     elif compare and not website_csp_header:
         console.print("Cannot compare: No CSP header found in the website's response.")
 
-    try:
-        with open(output, "w") as f:
-            f.write(computed_csp_header)
-        console.print(f"\nComputed CSP header written to {output}")
-    except Exception as e:
-        console.print(f"[red]Error writing CSP header to {output}: {e}[/red]")
-        raise typer.Exit(code=1)
+    if dry_run:
+        console.print("[cyan]Dry-run: CSP header output:[/cyan]")
+        console.print(computed_csp_header)
+        logger.info(f"Dry-run: CSP header previewed for {output}")
+    else:
+        try:
+            with open(output, "w") as f:
+                f.write(computed_csp_header)
+            console.print(f"\nComputed CSP header written to {output}")
+        except Exception as e:
+            console.print(f"[red]Error writing CSP header to {output}: {e}[/red]")
+            raise typer.Exit(code=1)

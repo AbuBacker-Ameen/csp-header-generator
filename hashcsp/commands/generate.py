@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-
+import logging
 import typer
 from rich.console import Console
 
@@ -15,7 +15,7 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
-
+logger = logging.getLogger(__name__)
 console = Console()
 
 @app.callback(invoke_without_command=True)
@@ -54,6 +54,11 @@ def generate(
         False,
         "--lint",
         help="Warn about unsafe CSP sources like *, data:, or 'unsafe-inline'.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview CSP output without writing to disk.",
     ),
 ):
     """Generate CSP headers for HTML files."""
@@ -117,17 +122,28 @@ def generate(
         # Determine output file and format
         output_file = output or ("csp.json" if json_output else "csp.conf")
         try:
-            if json_output:
-                # Serialize directives to JSON
-                config = CSPConfig(directives=csp.directives)
-                with open(output_file, "w", encoding="utf-8") as f:
-                    json.dump(config.dict(), f, indent=2)
-                console.print(f"[green]:small_red_triangle_down: CSP JSON written to {output_file} :memo:[/green]")
+            if dry_run:
+                if json_output:
+                    console.print("[cyan]Dry-run: CSP JSON output:[/cyan]")
+                    config = CSPConfig(directives=csp.directives)
+                    console.print(json.dumps(config.dict(), indent=2))
+                    logger.info(f"Dry-run: CSP JSON previewed for {output_file}")
+                else:
+                    console.print("[cyan]Dry-run: CSP header output:[/cyan]")
+                    console.print(csp_header)
+                    logger.info(f"Dry-run: CSP header previewed for {output_file}")
             else:
-                # Write text-based CSP header
-                with open(output_file, "w", encoding="utf-8") as f:
-                    f.write(csp_header)
-                console.print(f"[green]:small_red_triangle_down: CSP header written to {output_file} :memo:[/green]")
+                if json_output:
+                    # Serialize directives to JSON
+                    config = CSPConfig(directives=csp.directives)
+                    with open(output_file, "w", encoding="utf-8") as f:
+                        json.dump(config.dict(), f, indent=2)
+                    console.print(f"[green]:small_red_triangle_down: CSP JSON written to {output_file} :memo:[/green]")
+                else:
+                    # Write text-based CSP header
+                    with open(output_file, "w", encoding="utf-8") as f:
+                        f.write(csp_header)
+                    console.print(f"[green]:small_red_triangle_down: CSP header written to {output_file} :memo:[/green]")
         except PermissionError:
             console.print(f"[red]Error: Permission denied writing to {output_file} :no_entry_sign:[/red]")
             raise typer.Exit(code=1)

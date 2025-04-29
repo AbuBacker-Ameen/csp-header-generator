@@ -75,11 +75,17 @@ def validate_json_config(file_path: str) -> Optional[CSPConfig]:
         logger.error(f"Error reading {file_path}: {e}")
         return None
 
-def save_config(config: CSPConfig, path: str = "hashcsp.json") -> bool:
-    """Save CSP configuration to a JSON file."""
+def save_config(config: CSPConfig, path: str = "hashcsp.json", dry_run: bool = False) -> bool:
+    """Save CSP configuration to a JSON file or print for dry-run."""
     try:
+        config_json = json.dumps(config.dict(), indent=2)
+        if dry_run:
+            console.print("[cyan]Dry-run: Config JSON to be saved:[/cyan]")
+            console.print(config_json)
+            logger.info(f"Dry-run: Config JSON previewed for {path}")
+            return True
         with open(path, "w", encoding="utf-8") as f:
-            json.dump(config.dict(), f, indent=2)
+            f.write(config_json)
         console.print(f"[green]Config saved to {path}[/green]")
         logger.info(f"Config saved to {path}")
         return True

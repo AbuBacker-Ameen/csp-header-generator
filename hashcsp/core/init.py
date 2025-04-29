@@ -1,12 +1,11 @@
 import logging
 from typing import Dict, List
 
+from pydantic import ValidationError
 from rich.console import Console
 from rich.live import Live
-from rich.panel import Panel
 from rich.prompt import Prompt
-from rich.text import Text
-
+from rich.table import Table
 
 from .config import CSPConfig, save_config
 
@@ -17,77 +16,66 @@ console = Console()
 class CSPInitializer:
     def __init__(self):
         self.config = CSPConfig()
-        self.current_directive = ""
-        self.directive_index = 0
-        self.directives = list(self.config.directives.keys())
 
-    def get_panel_content(self) -> Text:
-        """Generate content for the live display panel."""
-        content = Text()
-        content.append("Configuring CSP Directives\n\n", style="bold cyan")
-        for i, directive in enumerate(self.directives):
-            if i == self.directive_index:
-                content.append(
-                    f"> {directive}: {self.config.directives[directive]}\n",
-                    style="bold green",
-                )
-            else:
-                content.append(f"  {directive}: {self.config.directives[directive]}\n")
-        content.append(
-            "\nEnter sources (space-separated) (e.g., 'self' https://example.com) \nor press Enter to keep default."
-        )
-        content.append("(CTRL C to exit)\n", style="#1f6468")
-        return content
+    def _prompt_for_directives(self) -> Dict[str, List[str]]:
+        """Prompt the user for CSP directives interactively."""
+        directives: Dict[str, List[str]] = {}
+        directive_names = [
+            "default-src",
+            "script-src",
+            "style-src",
+            "img-src",
+            "connect-src",
+            "font-src",
+            "media-src",
+            "frame-src",
+        ]
 
-    def run(self, output_path: str = "hashcsp.json") -> bool:
-        """Run the interactive CSP configuration shell."""
-        console.print("[cyan]Starting interactive CSP configuration...[/cyan]")
-        logger.info("Starting interactive CSP configuration")
+        table = Table(title="CSP Directives")
+        table.add_column("Directive", style="cyan")
+        table.add_column("Sources", style="green")
 
-        with Live(
-            Panel(
-                self.get_panel_content(), title="CSP Configuration", border_style="blue"
-            ),
-            # refresh_per_second=0,
-            auto_refresh=False,
-            transient=True,
-            screen=False,
-            console=console,
-        ) as live:
-            while self.directive_index < len(self.directives):
-                self.current_directive = self.directives[self.directive_index]
-
+        with Live(table, refresh_per_second=4) as live:
+            for directive in directive_names:
                 sources = Prompt.ask(
-                    f"[bold]{self.current_directive}[/bold]",
-                    default=" ".join(self.config.directives[self.current_directive]),
-                ).strip()
-
-                live.stop()
-                live.start()
-
+                    f"Enter sources for {directive} (comma-separated, or Enter to skip)",
+                    default="",
+                )
                 if sources:
-                    self.config.directives[self.current_directive] = sources.split()
+                    sources_list = [s.strip() for s in sources.split(",") if s.strip()]
+                    directives[directive] = sources_list
+                    table.add_row(directive, ", ".join(sources_list))
                 else:
-                    # Keep default if no input
-                    pass
+                    table.add_row(directive, "(skipped)")
+                live.update(table)
 
-                
-                self.directive_index += 1
+        return directives
 
-                live.update(
-                    Panel(
-                        self.get_panel_content(),
-                        title="CSP Configuration",
-                        border_style="blue",
-                        ),
-                    refresh=True)
+    def run(self, output_path: str = "hashcsp.json", dry_run: bool = False) -> bool:
+        """Run the interactive CSP configuration process."""
+        logger.info("Starting interactive CSP configuration")
+        console.print("[bold cyan]Starting CSP configuration wizard...[/bold cyan]")
 
-        # Save the configuration
-        success = save_config(self.config, output_path)
-        if success:
-            console.print(
-                f"[green]Configuration complete! Saved to {output_path}[/green]"
-            )
-        return success
+        try:
+            directives = self._prompt_for_directives()
+            self.config.directives = directives
 
+            # Validate the config
+            try:
+                CSPConfig(directives=directives)
+            except ValidationError as e:
+                console.print(f"[red]Error: Invalid CSP configuration: {e}[/red]")
+                logger.error(f"Invalid CSP configuration: {e}")
+                return False
 
+            # Save or preview the config
+            return save_config(self.config, output_path, dry_run=dry_run)
+
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Configuration interrupted by user[/yellow]")
+            logger.info("Configuration interrupted by user")
+            return False
+        except Exception as e:
+            console.print(f"[red]Error during configuration: {e}[/red]")
+            logger.error(f"Error during configuration: {e}")
+            return False

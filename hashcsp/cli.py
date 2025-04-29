@@ -54,8 +54,9 @@ def _version_callback(value: bool):
 def _init_callback(value: bool, ctx: typer.Context):
     if value:
         initializer = CSPInitializer()
-        output_path = ctx.params.get("config") or "hashcsp.json"
-        success = initializer.run(output_path)
+        config_path = ctx.params.get("config") or "hashcsp.json"
+        dry_run = ctx.params.get("dry_run", False)
+        success = initializer.run(config_path, dry_run=dry_run)
         if not success:
             raise typer.Exit(code=1)
         raise typer.Exit()
@@ -84,11 +85,16 @@ def main(
         "-c",
         help="Path to CSP configuration file (default: hashcsp.json).",
     ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Preview output without writing to disk.",
+    ),
 ):
     """hashcsp - Generate secure Content Security Policies."""
-    # Initialize context object with config
-    ctx.obj = {"config": load_config(config)}
-    logger.info(f"Context initialized with config: {config}")
+    # Initialize context object with config and dry-run
+    ctx.obj = {"config": load_config(config), "dry_run": dry_run}
+    logger.info(f"Context initialized with config: {config}, dry_run: {dry_run}")
 
 if __name__ == "__main__":
     app()
