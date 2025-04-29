@@ -206,12 +206,12 @@ Computed CSP header written to csp.conf
 
 ## Contributing
 
-We welcome contributions to HashCSP! Here’s how to get started:
+I welcome contributions to HashCSP, Here’s how to get started:
 
 1. **Fork the Repository**: Fork the project on GitHub and clone your fork:
 
    ```bash
-   git clone https://github.com/yourusername/hashcsp.git
+   git clone https://github.com/AbuBacker-Ameen/HashCSP.git
    cd hashcsp
    ```
 
@@ -219,7 +219,7 @@ We welcome contributions to HashCSP! Here’s how to get started:
    browsers:
 
    ```bash
-   poetry install
+   poetry install --with dev
    poetry run playwright install
    ```
 
