@@ -4,6 +4,7 @@ import logging
 import typer
 from rich.console import Console
 
+from ..core.config import load_config
 from ..core.csp_generator import CSPGenerator
 from ..core.remote_fetcher import RemoteFetcher
 
@@ -17,9 +18,9 @@ app = typer.Typer(
 console = Console()
 logger = logging.getLogger(__name__)
 
-
 @app.callback(invoke_without_command=True)
 def fetch(
+    ctx: typer.Context,
     url: str = typer.Option(
         ...,
         "--url",
@@ -50,8 +51,6 @@ def fetch(
     ),
 ):
     """Fetch a remote website, retrieve its CSP header, and generate a computed CSP header."""
-
-    # Setup logging handler to capture errors for display
     class CLILogHandler(logging.Handler):
         def __init__(self):
             super().__init__()
@@ -64,21 +63,23 @@ def fetch(
     cli_handler = CLILogHandler()
     cli_handler.setFormatter(logging.Formatter("%(levelname)s:%(name)s: %(message)s"))
     logger.addHandler(cli_handler)
-
-    # Clear any previous error messages
     cli_handler.error_messages.clear()
 
     csp = CSPGenerator()
     fetcher = RemoteFetcher(csp)
 
-    # Fetch the site and get the website's CSP header
+    # Load directives from config if available
+    config = ctx.obj.get("config") if ctx.obj else None
+    if config:
+        for directive, sources in config.directives.items():
+            csp.update_directive(directive, sources)
+
     loop = asyncio.get_event_loop()
     success, website_csp_header = loop.run_until_complete(
         fetcher.fetch_remote_site(url, wait, interaction_level, retries)
     )
 
     if not success:
-        # Display any captured error messages
         if cli_handler.error_messages:
             for msg in cli_handler.error_messages:
                 console.print(f"[red]{msg}[/red]")
@@ -86,21 +87,16 @@ def fetch(
             console.print(f"[red]Failed to fetch {url}. No CSP header generated.[/red]")
         raise typer.Exit(code=1)
 
-    # Display the website's CSP header (if any)
     console.print("\n=== Website's CSP Header ===")
     if website_csp_header:
         console.print(website_csp_header)
     else:
         console.print("No CSP header found in the website's response.")
 
-    # Generate the computed CSP header
     computed_csp_header = csp.generate_csp(report=True)
-
-    # Display the computed CSP header
     console.print("\n=== Computed CSP Header ===")
     console.print(computed_csp_header)
 
-    # Compare the CSP headers if requested
     if compare and website_csp_header:
         console.print("\n=== CSP Comparison ===")
         existing_directives = csp._parse_csp(website_csp_header)
@@ -109,7 +105,6 @@ def fetch(
     elif compare and not website_csp_header:
         console.print("Cannot compare: No CSP header found in the website's response.")
 
-    # Write the computed CSP header to the output file
     try:
         with open(output, "w") as f:
             f.write(computed_csp_header)

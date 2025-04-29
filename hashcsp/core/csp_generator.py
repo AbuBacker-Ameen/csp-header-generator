@@ -6,23 +6,13 @@ from .printer import Printer
 
 logger = logging.getLogger(__name__)
 
-
 class CSPGenerator:
     def __init__(self):
         self.hashes: Dict[str, List[str]] = {
             "script-src": [],
             "style-src": [],
         }
-        self.directives: Dict[str, List[str]] = {
-            "default-src": ["'self'"],
-            "script-src": ["'self'"],
-            "style-src": ["'self'"],
-            "img-src": ["'self'"],
-            "connect-src": ["'self'"],
-            "font-src": ["'self'"],
-            "media-src": ["'self'"],
-            "frame-src": ["'self'"],
-        }
+        self.directives: Dict[str, List[str]] = {}
         self.stats: Dict[str, int] = {
             "files_processed": 0,
             "files_with_no_inline_scripts": 0,
@@ -34,6 +24,21 @@ class CSPGenerator:
         }
         self.printer = Printer(self.stats)
 
+    def set_default_directives(self) -> None:
+        """Set default CSP directives if none are provided."""
+        default_directives = {
+            "default-src": ["'self'"],
+            "script-src": ["'self'"],
+            "style-src": ["'self'"],
+            "img-src": ["'self'"],
+            "connect-src": ["'self'"],
+            "font-src": ["'self'"],
+            "media-src": ["'self'"],
+            "frame-src": ["'self'"],
+        }
+        self.directives = default_directives
+        logger.info("Set default CSP directives")
+
     def compute_hash(self, content: str, source: str) -> str:
         """Compute the SHA256 hash of a script or style content."""
         if not content:
@@ -44,21 +49,24 @@ class CSPGenerator:
         return hash_value
 
     def update_directive(self, directive: str, sources: List[str]) -> None:
-        """Update a CSP directive with new sources."""
-        if directive not in self.directives:
-            self.directives[directive] = []
-        for source in sources:
-            if source and source not in self.directives[directive]:
-                self.directives[directive].append(source)
-                logger.info(f"Added {source} to {directive}")
+        """Update a CSP directive with new sources, replacing existing ones."""
+        if not sources:
+            logger.warning(f"No sources provided for {directive}")
+            return
+        self.directives[directive] = [source for source in sources if source]
+        logger.info(f"Updated {directive} with sources: {self.directives[directive]}")
 
     def generate_csp(self, report: bool = True) -> str:
         """Generate the CSP header string."""
+        # If no directives are set, use defaults
+        if not self.directives:
+            self.set_default_directives()
+
         csp_parts = []
         if self.hashes["script-src"]:
-            self.directives["script-src"].extend(self.hashes["script-src"])
+            self.directives.setdefault("script-src", []).extend(self.hashes["script-src"])
         if self.hashes["style-src"]:
-            self.directives["style-src"].extend(self.hashes["style-src"])
+            self.directives.setdefault("style-src", []).extend(self.hashes["style-src"])
 
         for directive, sources in self.directives.items():
             if sources:

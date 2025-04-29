@@ -3,6 +3,7 @@ import os
 import typer
 from rich.console import Console
 
+from ..core.config import load_config
 from ..core.csp_generator import CSPGenerator
 
 app = typer.Typer(
@@ -13,7 +14,6 @@ app = typer.Typer(
 )
 
 console = Console()
-
 
 @app.callback(invoke_without_command=True)
 def validate(
@@ -30,9 +30,15 @@ def validate(
 ):
     """Validate an existing CSP header against HTML files."""
     if ctx.invoked_subcommand is not None:
-        return  # Skip if a subcommand is invoked (for future expansion)
+        return
 
     csp = CSPGenerator()
+
+    # Load directives from config if available
+    config = ctx.obj.get("config") if ctx.obj else None
+    if config:
+        for directive, sources in config.directives.items():
+            csp.update_directive(directive, sources)
 
     try:
         if not path:
@@ -41,17 +47,12 @@ def validate(
             file = typer.prompt("Enter the CSP header file path")
 
         if not os.path.exists(path) or not os.path.isdir(path):
-            console.print(
-                f"[red]Error: Directory {path} does not exist or is not a directory :no_entry_sign:[/red]"
-            )
+            console.print(f"[red]Error: Directory {path} does not exist or is not a directory :no_entry_sign:[/red]")
             raise typer.Exit(code=1)
         if not os.path.exists(file) or not os.path.isfile(file):
-            console.print(
-                f"[red]Error: File {file} does not exist or is not a file :no_entry_sign:[/red]"
-            )
+            console.print(f"[red]Error: File {file} does not exist or is not a file :no_entry_sign:[/red]")
             raise typer.Exit(code=1)
 
-        # Validate CSP
         success = csp.validate_csp(file, path)
         if success:
             console.print("[green]CSP validation passed! :white_check_mark:[/green]")

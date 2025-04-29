@@ -51,8 +51,8 @@ def _version_callback(value: bool):
             console.print("[red]Version info not available[/red]")
         raise typer.Exit()
 
-def _init_callback(ctx: typer.Context, init: bool):
-    if init:
+def _init_callback(value: bool, ctx: typer.Context):
+    if value:
         initializer = CSPInitializer()
         output_path = ctx.params.get("config") or "hashcsp.json"
         success = initializer.run(output_path)
@@ -62,6 +62,7 @@ def _init_callback(ctx: typer.Context, init: bool):
 
 @app.callback()
 def main(
+    ctx: typer.Context,
     version: bool = typer.Option(
         None,
         "--version",
@@ -85,9 +86,9 @@ def main(
     ),
 ):
     """hashcsp - Generate secure Content Security Policies."""
-    # Load config and store in context
-    ctx = typer.get_current_context()
+    # Initialize context object with config
     ctx.obj = {"config": load_config(config)}
+    logger.info(f"Context initialized with config: {config}")
 
 if __name__ == "__main__":
     app()

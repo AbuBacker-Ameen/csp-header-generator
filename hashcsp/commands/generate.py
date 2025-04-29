@@ -4,6 +4,7 @@ import sys
 import typer
 from rich.console import Console
 
+from ..core.config import load_config
 from ..core.csp_generator import CSPGenerator
 from ..core.local_scanner import LocalScanner
 
@@ -16,29 +17,21 @@ app = typer.Typer(
 
 console = Console()
 
-
 def read_directives_file(file_path: str) -> str:
     """Read directives from a file."""
     try:
         if not os.path.isfile(file_path):
-            console.print(
-                f"[red]Error: Directives file {file_path} not found :no_entry_sign:[/red]"
-            )
+            console.print(f"[red]Error: Directives file {file_path} not found :no_entry_sign:[/red]")
             raise typer.Exit(code=1)
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read().strip()
             return content
     except UnicodeDecodeError:
-        console.print(
-            f"[red]Error: Directives file {file_path} has invalid encoding :no_entry_sign:[/red]"
-        )
+        console.print(f"[red]Error: Directives file {file_path} has invalid encoding :no_entry_sign:[/red]")
         raise typer.Exit(code=1)
     except Exception as e:
-        console.print(
-            f"[red]Error reading directives file {file_path}: {e} :sweat:[/red]"
-        )
+        console.print(f"[red]Error reading directives file {file_path}: {e} :sweat:[/red]")
         raise typer.Exit(code=1)
-
 
 @app.callback(invoke_without_command=True)
 def generate(
@@ -70,19 +63,23 @@ def generate(
 ):
     """Generate CSP headers for HTML files."""
     if ctx.invoked_subcommand is not None:
-        return  # Skip if a subcommand is invoked (for future expansion)
+        return
 
     csp = CSPGenerator()
     scanner = LocalScanner(csp)
+
+    # Load directives from config if available
+    config = ctx.obj.get("config") if ctx.obj else None
+    if config:
+        for directive, sources in config.directives.items():
+            csp.update_directive(directive, sources)
 
     try:
         # Validate path
         if not path:
             path = typer.prompt("Enter the directory containing HTML files")
         if not os.path.exists(path) or not os.path.isdir(path):
-            console.print(
-                f"[red]Error: Directory {path} does not exist or is not a directory :no_entry_sign:[/red]"
-            )
+            console.print(f"[red]Error: Directory {path} does not exist or is not a directory :no_entry_sign:[/red]")
             raise typer.Exit(code=1)
 
         # Process directives
@@ -110,20 +107,16 @@ def generate(
 
         # Scan and generate CSP
         scanner.scan_directory(path)
-        csp_header = csp.generate_csp()  # This will print the summary report
+        csp_header = csp.generate_csp()
 
         # Write output
         output_file = output or "csp.conf"
         try:
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write(csp_header)
-            console.print(
-                f"[green]:small_red_triangle_down: CSP header written to {output_file} :memo:[/green]"
-            )
+            console.print(f"[green]:small_red_triangle_down: CSP header written to {output_file} :memo:[/green]")
         except PermissionError:
-            console.print(
-                f"[red]Error: Permission denied writing to {output_file} :no_entry_sign:[/red]"
-            )
+            console.print(f"[red]Error: Permission denied writing to {output_file} :no_entry_sign:[/red]")
             raise typer.Exit(code=1)
         except Exception as e:
             console.print(f"[red]Error writing to {output_file}: {e} :sweat:[/red]")
