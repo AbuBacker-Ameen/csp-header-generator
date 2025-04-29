@@ -4,7 +4,7 @@ import sys
 import typer
 from rich.console import Console
 
-from ..core.config import load_config
+from ..core.config import load_config, validate_json_config
 from ..core.csp_generator import CSPGenerator
 from ..core.local_scanner import LocalScanner
 
@@ -16,22 +16,6 @@ app = typer.Typer(
 )
 
 console = Console()
-
-def read_directives_file(file_path: str) -> str:
-    """Read directives from a file."""
-    try:
-        if not os.path.isfile(file_path):
-            console.print(f"[red]Error: Directives file {file_path} not found :no_entry_sign:[/red]")
-            raise typer.Exit(code=1)
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            return content
-    except UnicodeDecodeError:
-        console.print(f"[red]Error: Directives file {file_path} has invalid encoding :no_entry_sign:[/red]")
-        raise typer.Exit(code=1)
-    except Exception as e:
-        console.print(f"[red]Error reading directives file {file_path}: {e} :sweat:[/red]")
-        raise typer.Exit(code=1)
 
 @app.callback(invoke_without_command=True)
 def generate(
@@ -58,7 +42,7 @@ def generate(
         None,
         "--directives-file",
         "-f",
-        help="File containing directives (one per line, format: directive:value)",
+        help="JSON file containing CSP directives (e.g., directives.json)",
     ),
 ):
     """Generate CSP headers for HTML files."""
@@ -68,12 +52,6 @@ def generate(
     csp = CSPGenerator()
     scanner = LocalScanner(csp)
 
-    # Load directives from config if available
-    config = ctx.obj.get("config") if ctx.obj else None
-    if config:
-        for directive, sources in config.directives.items():
-            csp.update_directive(directive, sources)
-
     try:
         # Validate path
         if not path:
@@ -82,19 +60,25 @@ def generate(
             console.print(f"[red]Error: Directory {path} does not exist or is not a directory :no_entry_sign:[/red]")
             raise typer.Exit(code=1)
 
-        # Process directives
-        directives_input = directives
-        if not directives and directives_file:
-            directives_input = read_directives_file(directives_file)
-        elif not directives and not directives_file and sys.stdin.isatty():
-            console.print(
-                "[cyan]Enter directives (e.g., script-src:'self' https://example.com,style-src:'self') or press Enter to skip:[/cyan]"
-            )
-            directives_input = input()
+        # Load directives from --directives-file (JSON) if provided
+        if directives_file:
+            json_config = validate_json_config(directives_file)
+            if json_config:
+                for directive, sources in json_config.directives.items():
+                    csp.update_directive(directive, sources)
+            else:
+                raise typer.Exit(code=1)
+        else:
+            # Load directives from config if no --directives-file
+            config = ctx.obj.get("config") if ctx.obj else None
+            if config:
+                for directive, sources in config.directives.items():
+                    csp.update_directive(directive, sources)
 
-        if directives_input:
+        # Process directives from --directives
+        if directives:
             try:
-                for directive_pair in directives_input.split(","):
+                for directive_pair in directives.split(","):
                     if not directive_pair.strip():
                         continue
                     directive, sources = directive_pair.split(":")
