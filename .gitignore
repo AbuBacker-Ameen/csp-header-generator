@@ -238,3 +238,5 @@ csp.conf
 hashcsp.json
 public/
 notes/
+csp.json
+directives.json

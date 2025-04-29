@@ -1,10 +1,11 @@
+import json
 import os
 import sys
 
 import typer
 from rich.console import Console
 
-from ..core.config import load_config, validate_json_config
+from ..core.config import load_config, validate_json_config, CSPConfig
 from ..core.csp_generator import CSPGenerator
 from ..core.local_scanner import LocalScanner
 
@@ -27,10 +28,10 @@ def generate(
         help="Directory containing HTML files to scan (e.g., ./public)",
     ),
     output: str = typer.Option(
-        "csp.conf",
+        None,
         "--output",
         "-o",
-        help="Output file for CSP header (defaults to csp.conf)",
+        help="Output file for CSP header (defaults to csp.conf or csp.json with --json-output)",
     ),
     directives: str = typer.Option(
         None,
@@ -43,6 +44,11 @@ def generate(
         "--directives-file",
         "-f",
         help="JSON file containing CSP directives (e.g., directives.json)",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json-output",
+        help="Output CSP directives as a JSON file instead of a text header.",
     ),
 ):
     """Generate CSP headers for HTML files."""
@@ -93,12 +99,20 @@ def generate(
         scanner.scan_directory(path)
         csp_header = csp.generate_csp()
 
-        # Write output
-        output_file = output or "csp.conf"
+        # Determine output file and format
+        output_file = output or ("csp.json" if json_output else "csp.conf")
         try:
-            with open(output_file, "w", encoding="utf-8") as f:
-                f.write(csp_header)
-            console.print(f"[green]:small_red_triangle_down: CSP header written to {output_file} :memo:[/green]")
+            if json_output:
+                # Serialize directives to JSON
+                config = CSPConfig(directives=csp.directives)
+                with open(output_file, "w", encoding="utf-8") as f:
+                    json.dump(config.dict(), f, indent=2)
+                console.print(f"[green]:small_red_triangle_down: CSP JSON written to {output_file} :memo:[/green]")
+            else:
+                # Write text-based CSP header
+                with open(output_file, "w", encoding="utf-8") as f:
+                    f.write(csp_header)
+                console.print(f"[green]:small_red_triangle_down: CSP header written to {output_file} :memo:[/green]")
         except PermissionError:
             console.print(f"[red]Error: Permission denied writing to {output_file} :no_entry_sign:[/red]")
             raise typer.Exit(code=1)
