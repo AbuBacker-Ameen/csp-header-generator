@@ -49,7 +49,9 @@ def mock_playwright() -> AsyncMock:
     page = AsyncMock(name="page")
     # - default goto() gives a response with a CSP header
     response = MagicMock()
-    response.all_headers = AsyncMock(return_value={"content-security-policy": "script-src 'self'"})
+    response.all_headers = AsyncMock(
+        return_value={"content-security-policy": "script-src 'self'"}
+    )
     page.goto = AsyncMock(return_value=response)
     page.content = AsyncMock(
         return_value="""
@@ -346,7 +348,9 @@ async def test_fetch_remote_site_dynamic_multiple_resources(
     assert "https://ex.com/one.js" in csp_generator.directives["script-src"]
     assert "https://ex.com/two.js" in csp_generator.directives["script-src"]
     # Images should not increment the external_scripts counter
-    assert "https://ex.com/img.png" not in csp_generator.directives.get("script-src", [])
+    assert "https://ex.com/img.png" not in csp_generator.directives.get(
+        "script-src", []
+    )
 
 
 # --------------------------------------------------------------------------- #
