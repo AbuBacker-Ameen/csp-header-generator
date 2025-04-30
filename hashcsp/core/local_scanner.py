@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 class LocalScanner:
     def __init__(self, csp_generator: CSPGenerator):
         self.csp = csp_generator
+        # Initialize directive keys if not present
+        for key in ["script-src", "style-src", "img-src"]:
+            if key not in self.csp.directives:
+                self.csp.directives[key] = []
 
     def scan_html_file(self, file_path: str) -> bool:
         """Scan an HTML file for inline scripts, styles, and external resources."""
