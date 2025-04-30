@@ -84,7 +84,7 @@ def save_config(
 ) -> bool:
     """Save CSP configuration to a JSON file or print for dry-run."""
     try:
-        config_json = json.dumps(config.dict(), indent=2)
+        config_json = json.dumps(config.model_dump(), indent=2)
         if dry_run:
             console.print("[cyan]Dry-run: Config JSON to be saved:[/cyan]")
             console.print(config_json)
