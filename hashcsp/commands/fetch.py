@@ -1,3 +1,17 @@
+"""Fetch command for HashCSP.
+
+This module provides the command for fetching remote websites and analyzing their
+content to generate appropriate CSP headers. It supports various levels of
+interaction simulation and can compare generated headers with existing ones.
+
+The command handles:
+- Remote website fetching with retry logic
+- Dynamic content analysis
+- User interaction simulation
+- Network request tracking
+- CSP header comparison
+"""
+
 import asyncio
 import logging
 
@@ -55,14 +69,58 @@ def fetch(
         help="Preview CSP output without writing to disk.",
     ),
 ):
-    """Fetch a remote website, retrieve its CSP header, and generate a computed CSP header."""
+    """Fetch a remote website and generate a CSP header based on its content.
+
+    This command fetches a remote website, analyzes its content (including dynamic
+    content), and generates an appropriate CSP header. It can simulate different
+    levels of user interaction to discover dynamically loaded resources.
+
+    The command supports:
+    - Multiple retry attempts for reliability
+    - Configurable wait times for dynamic content
+    - Different levels of user interaction simulation
+    - Comparison with existing CSP headers
+    - Preview mode with dry-run option
+
+    Args:
+        ctx (typer.Context): The Typer context object containing CLI state.
+        url (str): The website URL to analyze (must include protocol).
+        output (str, optional): Output file path. Defaults to "csp.conf".
+        wait (int, optional): Wait time in seconds. Defaults to 2.
+        compare (bool, optional): Enable CSP comparison. Defaults to False.
+        interaction_level (int, optional): User interaction simulation level:
+            - 0: No interaction (default)
+            - 1: Basic (scrolling)
+            - 2: Advanced (clicking, hovering)
+        retries (int, optional): Number of retry attempts. Defaults to 2.
+        dry_run (bool, optional): Preview mode. Defaults to False.
+
+    Raises:
+        typer.Exit: Exits with code 1 on error, 0 on success.
+    """
 
     class CLILogHandler(logging.Handler):
+        """Custom logging handler for CLI output.
+
+        This handler collects error messages for display in the CLI interface.
+
+        Attributes:
+            error_messages (List[str]): List of collected error messages.
+        """
+
         def __init__(self):
+            """Initialize the CLI log handler."""
             super().__init__()
             self.error_messages: list[str] = []
 
         def emit(self, record):
+            """Emit a log record.
+
+            Collects error messages from log records for later display.
+
+            Args:
+                record: The log record to process.
+            """
             if record.levelno >= logging.ERROR:
                 self.error_messages.append(self.format(record))
 

@@ -1,3 +1,17 @@
+"""Generate command for HashCSP.
+
+This module provides the command for generating CSP headers by scanning HTML files
+for inline scripts, styles, and external resources. It supports various output
+formats and configuration options.
+
+The command can:
+- Scan directories for HTML files
+- Process inline scripts and styles
+- Track external resources
+- Generate CSP headers in text or JSON format
+- Validate CSP directives for security issues
+"""
+
 import json
 import logging
 import os
@@ -64,7 +78,30 @@ def generate(
         help="Preview CSP output without writing to disk.",
     ),
 ):
-    """Generate CSP headers for HTML files."""
+    """Generate CSP headers for HTML files.
+
+    This command scans a directory of HTML files and generates appropriate CSP
+    headers based on the content found. It can process both inline content
+    (scripts and styles) and external resources.
+
+    The command supports multiple configuration methods:
+    - Command-line directives
+    - JSON configuration file
+    - Default directives from global config
+
+    Args:
+        ctx (typer.Context): The Typer context object containing CLI state.
+        path (str, optional): Directory to scan. Will prompt if not provided.
+        output (str, optional): Output file path. Defaults based on format.
+        directives (str, optional): Inline directive specifications.
+        directives_file (str, optional): JSON file with directives.
+        json_output (bool, optional): Use JSON output format. Defaults to False.
+        lint (bool, optional): Enable security linting. Defaults to False.
+        dry_run (bool, optional): Preview mode. Defaults to False.
+
+    Raises:
+        typer.Exit: Exits with code 1 on error, 0 on success.
+    """
     if ctx.invoked_subcommand is not None:
         return
 

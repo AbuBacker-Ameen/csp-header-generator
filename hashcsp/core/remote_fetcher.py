@@ -15,7 +15,23 @@ logger = logging.getLogger(__name__)
 
 
 class RemoteFetcher:
+    """Fetches and analyzes remote websites for CSP generation.
+
+    This class uses Playwright to fetch remote websites, analyze their content,
+    and extract information needed for CSP generation. It handles both static
+    and dynamic content, and can perform various levels of user interaction
+    simulation.
+
+    Attributes:
+        csp (CSPGenerator): The CSP generator instance to update with found resources.
+    """
+
     def __init__(self, csp_generator: CSPGenerator):
+        """Initialize a RemoteFetcher instance.
+
+        Args:
+            csp_generator (CSPGenerator): The CSP generator to update with found resources.
+        """
         self.csp = csp_generator
 
     async def fetch_remote_site(
@@ -23,14 +39,32 @@ class RemoteFetcher:
     ) -> Tuple[bool, Optional[str]]:
         """Fetch a website, mimic user behavior, and extract resources for CSP generation.
 
+        Performs a comprehensive analysis of a remote website including:
+        - Fetching the initial page
+        - Analyzing inline scripts and styles
+        - Tracking network requests for external resources
+        - Simulating user interactions based on the specified level
+        - Handling dynamic content injection
+
         Args:
-            url: The target URL to fetch.
-            wait_time: Base wait time for resources (seconds).
-            interaction_level: Level of user interaction (0 = none, 1 = basic, 2 = advanced).
-            retries: Number of retry attempts for failed fetches.
+            url (str): The target URL to fetch.
+            wait_time (int): Base wait time for resources (seconds).
+            interaction_level (int, optional): Level of user interaction simulation:
+                - 0: No interaction
+                - 1: Basic (scrolling)
+                - 2: Advanced (clicking, hovering)
+                Defaults to 0.
+            retries (int, optional): Number of retry attempts for failed fetches.
+                Defaults to 2.
 
         Returns:
-            Tuple[bool, Optional[str]]: (success, website_csp_header)
+            Tuple[bool, Optional[str]]: A tuple containing:
+                - bool: True if the fetch was successful, False otherwise
+                - Optional[str]: The website's CSP header if found, None otherwise
+
+        Raises:
+            TypeError: If BeautifulSoup returns non-Tag elements.
+            ValueError: If the URL protocol is invalid.
         """
         # Validate URL protocol
         if not re.match(r"^https?://", url):

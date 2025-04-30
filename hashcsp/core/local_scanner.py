@@ -9,7 +9,21 @@ logger = logging.getLogger(__name__)
 
 
 class LocalScanner:
+    """Scanner for analyzing local HTML files to generate CSP directives.
+
+    This class scans HTML files for inline scripts, styles, and external resources
+    to generate appropriate CSP directives and hashes.
+
+    Attributes:
+        csp (CSPGenerator): The CSP generator instance to update with found resources.
+    """
+
     def __init__(self, csp_generator: CSPGenerator):
+        """Initialize a LocalScanner instance.
+
+        Args:
+            csp_generator (CSPGenerator): The CSP generator to update with found resources.
+        """
         self.csp = csp_generator
         # Initialize directive keys if not present
         for key in ["script-src", "style-src", "img-src"]:
@@ -17,7 +31,24 @@ class LocalScanner:
                 self.csp.directives[key] = []
 
     def scan_html_file(self, file_path: str) -> bool:
-        """Scan an HTML file for inline scripts, styles, and external resources."""
+        """Scan an HTML file for inline scripts, styles, and external resources.
+
+        Analyzes a single HTML file for:
+        - Inline scripts and their hashes
+        - Inline styles and their hashes
+        - External script sources
+        - External style sources
+        - Image sources
+
+        Args:
+            file_path (str): Path to the HTML file to scan.
+
+        Returns:
+            bool: True if the file was successfully processed, False otherwise.
+
+        Raises:
+            TypeError: If BeautifulSoup returns non-Tag elements.
+        """
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 soup = BeautifulSoup(f, "html.parser")
@@ -107,7 +138,14 @@ class LocalScanner:
             return False
 
     def scan_directory(self, directory: str) -> None:
-        """Scan all HTML files in a directory."""
+        """Scan all HTML files in a directory and its subdirectories.
+
+        Recursively scans a directory for HTML files (*.html, *.htm) and processes
+        each file to extract CSP-relevant content.
+
+        Args:
+            directory (str): Path to the directory to scan.
+        """
         html_extensions = (".html", ".htm")
         for root, _, files in os.walk(directory):
             for file in files:

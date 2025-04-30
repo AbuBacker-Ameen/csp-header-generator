@@ -76,6 +76,7 @@ cover/
 *.log
 local_settings.py
 db.sqlite3
+.cursor/
 db.sqlite3-journal
 
 # Flask stuff:
@@ -188,7 +189,7 @@ pyrightconfig.json
 
 ### VisualStudioCode ###
 .vscode/*
-!.vscode/settings.json
+.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json

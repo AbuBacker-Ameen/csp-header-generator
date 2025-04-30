@@ -1,3 +1,12 @@
+"""Command-line interface for HashCSP.
+
+This module provides the main entry point for the HashCSP CLI tool, which helps
+generate and manage Content Security Policy headers. It includes commands for
+generating, validating, and fetching CSP headers.
+
+The CLI is built using Typer and provides rich text output formatting.
+"""
+
 import datetime
 import logging
 from importlib.metadata import PackageNotFoundError, version
@@ -44,6 +53,14 @@ app.add_typer(fetch.app, name="fetch")
 
 
 def _version_callback(value: bool):
+    """Handle the --version flag in the CLI.
+
+    Args:
+        value (bool): The flag value from the CLI.
+
+    Raises:
+        typer.Exit: Always exits after displaying version information.
+    """
     if value:
         try:
             current_version = version("hashcsp")
@@ -54,6 +71,17 @@ def _version_callback(value: bool):
 
 
 def _init_callback(value: bool, ctx: typer.Context):
+    """Handle the --init flag in the CLI.
+
+    Initializes a new CSP configuration file interactively if the flag is set.
+
+    Args:
+        value (bool): The flag value from the CLI.
+        ctx (typer.Context): The Typer context object containing CLI state.
+
+    Raises:
+        typer.Exit: Exits with code 1 on failure, 0 on success.
+    """
     if value:
         initializer = CSPInitializer()
         config_path = ctx.params.get("config") or "hashcsp.json"
@@ -94,7 +122,19 @@ def main(
         help="Preview output without writing to disk.",
     ),
 ):
-    """hashcsp - Generate secure Content Security Policies."""
+    """HashCSP - Generate secure Content Security Policies.
+
+    This is the main entry point for the HashCSP CLI tool. It provides commands
+    for generating, validating, and fetching CSP headers. The tool can work with
+    both local files and remote websites.
+
+    Args:
+        ctx (typer.Context): The Typer context object for managing CLI state.
+        version (bool, optional): Flag to show version information. Defaults to None.
+        init (bool, optional): Flag to initialize configuration. Defaults to False.
+        config (str, optional): Path to config file. Defaults to None.
+        dry_run (bool, optional): Flag for preview mode. Defaults to False.
+    """
     # Initialize context object with config and dry-run
     ctx.obj = {"config": load_config(config), "dry_run": dry_run}
     logger.info(f"Context initialized with config: {config}, dry_run: {dry_run}")

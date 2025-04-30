@@ -10,11 +10,39 @@ console = Console()
 
 
 class Printer:
+    """Handles formatted output of CSP generation reports and comparisons.
+
+    This class provides methods to print summary reports and detailed comparisons
+    of CSP configurations using rich text formatting. It supports both rich text
+    and plain text output modes.
+
+    Attributes:
+        stats (Dict[str, int]): Statistics about processed files and resources.
+    """
+
     def __init__(self, stats: Dict[str, int]):
+        """Initialize a Printer instance.
+
+        Args:
+            stats (Dict[str, int]): Dictionary containing statistics about processed
+                files and resources.
+        """
         self.stats = stats
 
     def print_summary_report(self):
-        """Print a summary report of CSP generation stats."""
+        """Print a summary report of CSP generation stats.
+
+        Outputs a formatted table containing statistics about processed files,
+        including counts of:
+        - Total files processed
+        - Files with no inline scripts/styles
+        - Unique script and style hashes
+        - External scripts, styles, and images
+
+        The output format depends on the CSP_PLAIN_OUTPUT environment variable:
+        - If set to "1": Plain text output
+        - Otherwise: Rich text table with formatting
+        """
         if os.environ.get("CSP_PLAIN_OUTPUT") == "1":
             print("CSP Generation Report :dart:")
             print(f"Files Processed :page_facing_up: : {self.stats['files_processed']}")
@@ -76,7 +104,22 @@ class Printer:
     def print_csp_diff(
         self, existing: Dict[str, List[str]], generated: Dict[str, List[str]]
     ):
-        """Print a detailed report of CSP differences with metrics."""
+        """Print a detailed report of CSP differences with metrics.
+
+        Compares two CSP configurations and outputs a detailed report of their
+        differences, including:
+        - Missing and extra sources for each directive
+        - Missing and extra directives
+        - Detailed metrics about hash and link differences
+
+        Args:
+            existing (Dict[str, List[str]]): The existing CSP configuration.
+            generated (Dict[str, List[str]]): The newly generated CSP configuration.
+
+        The output format depends on the CSP_PLAIN_OUTPUT environment variable:
+        - If set to "1": Plain text output
+        - Otherwise: Rich text tables with formatting
+        """
         if os.environ.get("CSP_PLAIN_OUTPUT") == "1":
             print("CSP Mismatch Details :warning:")
             all_directives = set(existing.keys()) | set(generated.keys())

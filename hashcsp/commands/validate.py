@@ -1,3 +1,16 @@
+"""Validate command for HashCSP.
+
+This module provides the command for validating existing CSP headers against
+HTML files to ensure they match current scripts and styles. It helps identify
+discrepancies between the current CSP and the actual resource usage.
+
+The command performs:
+- Scanning of HTML files in a directory
+- Comparison with existing CSP header
+- Detailed reporting of differences
+- Suggestions for updates
+"""
+
 import os
 
 import typer
@@ -28,7 +41,25 @@ def validate(
         None, "--file", "-f", help="CSP header file to validate (e.g., csp.conf)"
     ),
 ):
-    """Validate an existing CSP header against HTML files."""
+    """Validate an existing CSP header against HTML files.
+
+    This command compares an existing CSP header with the current state of HTML
+    files in a directory. It helps identify:
+    - Missing hashes for inline scripts and styles
+    - Missing or extra external resource sources
+    - Changes in resource usage patterns
+
+    Args:
+        ctx (typer.Context): The Typer context object containing CLI state.
+        path (str, optional): Directory containing HTML files to scan.
+            Will prompt if not provided.
+        file (str, optional): Path to the CSP header file to validate.
+            Will prompt if not provided.
+
+    Raises:
+        typer.Exit: Exits with code 1 on validation failure or error,
+            0 on successful validation.
+    """
     if ctx.invoked_subcommand is not None:
         return
 
