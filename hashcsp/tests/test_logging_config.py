@@ -6,16 +6,13 @@ and error handling in the logging system.
 
 import json
 import logging
-import os
 from pathlib import Path
-from typing import Dict
 
 import pytest
 import structlog
 from structlog.stdlib import ProcessorFormatter
 
 from hashcsp.core.logging_config import (
-    ErrorCodes,
     LoggingConfig,
     sanitize_log_record,
     setup_logging,
@@ -110,8 +107,13 @@ def test_setup_logging_console_format(valid_config: LoggingConfig):
     root_logger = logging.getLogger()
 
     assert len(root_logger.handlers) == 2  # File and console handlers
-    assert any(isinstance(h, logging.handlers.RotatingFileHandler) for h in root_logger.handlers)
-    assert any(isinstance(h.formatter, ProcessorFormatter) for h in root_logger.handlers)
+    assert any(
+        isinstance(h, logging.handlers.RotatingFileHandler)
+        for h in root_logger.handlers
+    )
+    assert any(
+        isinstance(h.formatter, ProcessorFormatter) for h in root_logger.handlers
+    )
 
 
 def test_setup_logging_invalid_directory(temp_log_dir: Path):
@@ -175,13 +177,8 @@ def test_sanitize_log_record_sensitive_patterns():
 def test_sanitize_log_record_nested_content():
     """Test sanitization of nested structures."""
     input_dict = {
-        "outer": {
-            "inner": {
-                "password": "secret",
-                "safe": "value"
-            }
-        },
-        "message": "test"
+        "outer": {"inner": {"password": "secret", "safe": "value"}},
+        "message": "test",
     }
     result = sanitize_log_record("test_logger", "info", input_dict)
     assert result["outer"]["inner"]["password"] == "***REDACTED***"
@@ -194,7 +191,7 @@ def test_logging_output_format(valid_config: LoggingConfig, temp_log_dir: Path):
     """Test the format of logged output."""
     setup_logging(valid_config)
     logger = structlog.get_logger("test")
-    
+
     test_message = "Test log message"
     logger.info(test_message, custom_param="test_value")
 
@@ -202,7 +199,7 @@ def test_logging_output_format(valid_config: LoggingConfig, temp_log_dir: Path):
     with open(valid_config.file) as f:
         log_lines = f.readlines()
         log_line = log_lines[-1]  # Get the last line which should be our test message
-    
+
     # Parse JSON and verify structure
     log_entry = json.loads(log_line)
     assert log_entry["event"] == test_message
@@ -242,9 +239,9 @@ def test_error_logging(valid_config: LoggingConfig, temp_log_dir: Path):
     with open(valid_config.file) as f:
         log_lines = f.readlines()
         log_line = log_lines[-1]  # Get the last line which should be our error message
-    
+
     # Verify error details
     log_entry = json.loads(log_line)
     assert log_entry["level"] == "error"
     assert "exception" in log_entry
-    assert "ValueError: Test error" in log_entry["exception"] 
+    assert "ValueError: Test error" in log_entry["exception"]

@@ -8,16 +8,22 @@ The CLI is built using Typer and provides rich text output formatting.
 """
 
 import datetime
+import zoneinfo
 from importlib.metadata import PackageNotFoundError, version
+from typing import Dict, List
 
 import typer
 from rich.console import Console
 
-from . import __logfile__
 from .commands import fetch, generate, validate
 from .core.config import load_config
 from .core.init import CSPInitializer
-from .core.logging_config import get_logger
+from .core.logging_config import (
+    LoggingConfig,
+    get_default_timezone,
+    get_logger,
+    setup_logging,
+)
 
 app = typer.Typer(
     name="hashcsp",
@@ -25,16 +31,26 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
     context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=True,
 )
 
 console = Console()
+
+# Get list of available timezones for autocompletion
+AVAILABLE_TIMEZONES = sorted(zoneinfo.available_timezones())
+
+# Initialize logging with file-only by default and system timezone
+initial_config = LoggingConfig(console_level=None)
+setup_logging(initial_config)
 logger = get_logger(__name__)
 
 # Log startup information
 SEP = "\n" + "=" * 80 + "\n"
-logger.info("HashCSP CLI started",
-           timestamp=datetime.datetime.now().isoformat(timespec="seconds"),
-           operation="cli_startup")
+logger.info(
+    "HashCSP CLI started",
+    timestamp=datetime.datetime.now().isoformat(timespec="seconds"),
+    operation="cli_startup",
+)
 
 # Register commands
 app.add_typer(generate.app, name="generate")
@@ -54,13 +70,14 @@ def _version_callback(value: bool):
     if value:
         try:
             current_version = version("hashcsp")
-            logger.info("Version information requested",
-                       version=current_version,
-                       operation="version_check")
+            logger.info(
+                "Version information requested",
+                version=current_version,
+                operation="version_check",
+            )
             console.print(f"[cyan bold]hashcsp v{current_version}[/cyan bold]")
         except PackageNotFoundError:
-            logger.error("Version information not available",
-                        operation="version_check")
+            logger.error("Version information not available", operation="version_check")
             console.print("[red]Version info not available[/red]")
         raise typer.Exit()
 
@@ -81,26 +98,94 @@ def _init_callback(value: bool, ctx: typer.Context):
         initializer = CSPInitializer()
         config_path = ctx.params.get("config") or "hashcsp.json"
         dry_run = ctx.params.get("dry_run", False)
-        logger.info("Starting configuration initialization",
-                   config_path=config_path,
-                   dry_run=dry_run,
-                   operation="init_config")
+        logger.info(
+            "Starting configuration initialization",
+            config_path=config_path,
+            dry_run=dry_run,
+            operation="init_config",
+        )
         success = initializer.run(config_path, dry_run=dry_run)
         if not success:
-            logger.error("Configuration initialization failed",
-                        config_path=config_path,
-                        operation="init_config")
+            logger.error(
+                "Configuration initialization failed",
+                config_path=config_path,
+                operation="init_config",
+            )
             raise typer.Exit(code=1)
         raise typer.Exit()
 
 
-@app.callback()
+def _list_timezones_callback(value: bool):
+    """Handle the --list-timezones flag in the CLI.
+
+    Args:
+        value (bool): The flag value from the CLI.
+
+    Raises:
+        typer.Exit: Always exits after displaying timezone information.
+    """
+    if value:
+        console.print("\n[bold cyan]Available Timezones:[/bold cyan]")
+        # Group timezones by region for better readability
+        regions: Dict[str, List[str]] = {}
+        for tz in AVAILABLE_TIMEZONES:
+            region = tz.split("/")[0]
+            if region not in regions:
+                regions[region] = []
+            regions[region].append(tz)
+
+        for region in sorted(regions):
+            console.print(f"\n[bold yellow]{region}[/bold yellow]")
+            for tz in sorted(regions[region]):
+                try:
+                    current_time = datetime.datetime.now(zoneinfo.ZoneInfo(tz))
+                    console.print(
+                        f"  {tz:<35} (Current time: {current_time.strftime('%H:%M')})"
+                    )
+                except Exception:
+                    console.print(f"  {tz}")
+        raise typer.Exit()
+
+
+def timezone_callback(value: str) -> str:
+    """Validate the timezone value.
+
+    Args:
+        value (str): The timezone value from the CLI.
+
+    Returns:
+        str: The validated timezone value.
+
+    Raises:
+        typer.BadParameter: If the timezone is invalid.
+    """
+    if not value:
+        return get_default_timezone()
+    try:
+        zoneinfo.ZoneInfo(value)
+        return value
+    except zoneinfo.ZoneInfoNotFoundError:
+        # Find similar timezones for suggestion
+        suggestions = [tz for tz in AVAILABLE_TIMEZONES if value.lower() in tz.lower()][
+            :3
+        ]
+        suggestion_msg = (
+            f"\nDid you mean one of these?\n  {', '.join(suggestions)}"
+            if suggestions
+            else ""
+        )
+        raise typer.BadParameter(
+            f"Invalid timezone: {value}. Must be a valid IANA timezone name.{suggestion_msg}\n"
+            "Use --list-timezones to see all available options."
+        )
+
+
+@app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
     version: bool = typer.Option(
         None,
         "--version",
-        "-v",
         help="Show the hashcsp version and exit.",
         callback=_version_callback,
         is_eager=True,
@@ -110,6 +195,13 @@ def main(
         "--init",
         help="Initialize a new CSP configuration file interactively.",
         callback=_init_callback,
+        is_eager=True,
+    ),
+    list_timezones: bool = typer.Option(
+        False,
+        "--list-timezones",
+        help="List all available timezone names and exit.",
+        callback=_list_timezones_callback,
         is_eager=True,
     ),
     config: str = typer.Option(
@@ -123,6 +215,21 @@ def main(
         "--dry-run",
         help="Preview output without writing to disk.",
     ),
+    verbose: int = typer.Option(
+        0,
+        "--verbose",
+        "-v",
+        count=True,
+        help="Enable verbose output. Use -v for INFO, -vv for DEBUG.",
+    ),
+    timezone: str = typer.Option(
+        get_default_timezone(),  # Use system timezone as default
+        "--timezone",
+        "-t",
+        help="Set the timezone for log timestamps (e.g., 'Asia/Dubai', 'Europe/London'). Defaults to system timezone.",
+        callback=timezone_callback,
+        autocompletion=lambda: AVAILABLE_TIMEZONES,
+    ),
 ):
     """HashCSP - Generate secure Content Security Policies.
 
@@ -134,15 +241,53 @@ def main(
         ctx (typer.Context): The Typer context object for managing CLI state.
         version (bool, optional): Flag to show version information. Defaults to None.
         init (bool, optional): Flag to initialize configuration. Defaults to False.
+        list_timezones (bool, optional): List available timezones. Defaults to False.
         config (str, optional): Path to config file. Defaults to None.
         dry_run (bool, optional): Flag for preview mode. Defaults to False.
+        verbose (int, optional): Verbosity level (0=no console, 1=INFO, 2=DEBUG).
+        timezone (str, optional): Timezone for log timestamps. Defaults to system timezone.
     """
+    # If no command is provided and no eager option was triggered, show help
+    if ctx.invoked_subcommand is None and not any([version, init, list_timezones]):
+        console.print(ctx.get_help())
+        raise typer.Exit()
+
+    # Set up logging based on verbosity
+    console_level = None
+    if verbose == 1:
+        console_level = "INFO"
+    elif verbose >= 2:
+        console_level = "DEBUG"
+
     # Initialize context object with config and dry-run
-    ctx.obj = {"config": load_config(config), "dry_run": dry_run}
-    logger.info("CLI context initialized",
-               config_path=config,
-               dry_run=dry_run,
-               operation="cli_init")
+    ctx.ensure_object(dict)
+
+    # Create logging config
+    logging_config = LoggingConfig(console_level=console_level, timezone=timezone)
+
+    # Store logging config in context first (needed for timestamp processor)
+    ctx.obj["logging_config"] = logging_config
+
+    # Now set up logging with context
+    setup_logging(logging_config, ctx)
+
+    # Load and store CSP config
+    loaded_config = load_config(config)
+    ctx.obj.update(
+        {
+            "config": loaded_config,
+            "dry_run": dry_run,
+        }
+    )
+
+    logger.info(
+        "CLI context initialized",
+        config_path=config,
+        dry_run=dry_run,
+        verbose_level=verbose,
+        timezone=timezone,
+        operation="cli_init",
+    )
 
 
 if __name__ == "__main__":

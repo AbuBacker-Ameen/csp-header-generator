@@ -63,9 +63,11 @@ class CSPGenerator:
             "frame-src": ["'self'"],
         }
         self.directives = default_directives
-        logger.info("Set default CSP directives",
-                   operation="set_default_directives",
-                   directive_count=len(default_directives))
+        logger.info(
+            "Set default CSP directives",
+            operation="set_default_directives",
+            directive_count=len(default_directives),
+        )
 
     def compute_hash(self, content: str, source: str) -> str:
         """Compute the SHA256 hash of a script or style content.
@@ -78,16 +80,20 @@ class CSPGenerator:
             str: The computed hash in CSP format ('sha256-{hash}') or empty string if content is empty.
         """
         if not content:
-            logger.warning("Empty content provided for hashing",
-                         source=source,
-                         operation="compute_hash")
+            logger.warning(
+                "Empty content provided for hashing",
+                source=source,
+                operation="compute_hash",
+            )
             return ""
         hash_obj = hashlib.sha256(content.encode("utf-8"))
         hash_value = f"'sha256-{hash_obj.digest().hex()}'"
-        logger.debug("Computed content hash",
-                    source=source,
-                    hash=hash_value,
-                    operation="compute_hash")
+        logger.debug(
+            "Computed content hash",
+            source=source,
+            hash=hash_value,
+            operation="compute_hash",
+        )
         return hash_value
 
     def update_directive(self, directive: str, sources: List[str]) -> None:
@@ -98,15 +104,19 @@ class CSPGenerator:
             sources (List[str]): List of sources to set for the directive.
         """
         if not sources:
-            logger.warning("No sources provided for directive",
-                         directive=directive,
-                         operation="update_directive")
+            logger.warning(
+                "No sources provided for directive",
+                directive=directive,
+                operation="update_directive",
+            )
             return
         self.directives[directive] = [source for source in sources if source]
-        logger.info("Updated directive sources",
-                   directive=directive,
-                   source_count=len(self.directives[directive]),
-                   operation="update_directive")
+        logger.info(
+            "Updated directive sources",
+            directive=directive,
+            source_count=len(self.directives[directive]),
+            operation="update_directive",
+        )
 
     def lint_directives(self) -> List[str]:
         """Check directives for unsafe sources and return warning messages.
@@ -121,11 +131,13 @@ class CSPGenerator:
                 if source in unsafe_sources:
                     warning = f"Unsafe source '{source}' found in {directive}"
                     warnings.append(warning)
-                    logger.warning("Detected unsafe CSP source",
-                                 directive=directive,
-                                 source=source,
-                                 operation="lint_directives",
-                                 error_code=ErrorCodes.UNSAFE_DIRECTIVE)
+                    logger.warning(
+                        "Detected unsafe CSP source",
+                        directive=directive,
+                        source=source,
+                        operation="lint_directives",
+                        error_code=ErrorCodes.UNSAFE_DIRECTIVE,
+                    )
         return warnings
 
     def generate_csp(self, report: bool = True) -> str:
@@ -156,11 +168,13 @@ class CSPGenerator:
         csp_header = "; ".join(csp_parts)
         if csp_header:
             csp_header += ";"
-        
-        logger.info("Generated CSP header",
-                   directive_count=len(self.directives),
-                   hash_count=len(self.hashes["script-src"]) + len(self.hashes["style-src"]),
-                   operation="generate_csp")
+
+        logger.info(
+            "Generated CSP header",
+            directive_count=len(self.directives),
+            hash_count=len(self.hashes["script-src"]) + len(self.hashes["style-src"]),
+            operation="generate_csp",
+        )
 
         if report:
             self.printer.print_summary_report()
@@ -178,8 +192,9 @@ class CSPGenerator:
         """
         directives: Dict[str, List[str]] = {}
         if not csp:
-            logger.warning("Empty CSP string provided for parsing",
-                         operation="_parse_csp")
+            logger.warning(
+                "Empty CSP string provided for parsing", operation="_parse_csp"
+            )
             return directives
         for part in csp.split(";"):
             part = part.strip()
@@ -187,15 +202,19 @@ class CSPGenerator:
                 try:
                     directive, *sources = part.split()
                     directives[directive] = sources
-                    logger.debug("Parsed CSP directive",
-                               directive=directive,
-                               source_count=len(sources),
-                               operation="_parse_csp")
+                    logger.debug(
+                        "Parsed CSP directive",
+                        directive=directive,
+                        source_count=len(sources),
+                        operation="_parse_csp",
+                    )
                 except ValueError:
-                    logger.warning("Invalid CSP directive format",
-                                 directive_part=part,
-                                 operation="_parse_csp",
-                                 error_code=ErrorCodes.INVALID_CSP)
+                    logger.warning(
+                        "Invalid CSP directive format",
+                        directive_part=part,
+                        operation="_parse_csp",
+                        error_code=ErrorCodes.INVALID_CSP,
+                    )
                     continue
         return directives
 
@@ -213,22 +232,26 @@ class CSPGenerator:
             LocalScanner,  # Import here to avoid circular dependency
         )
 
-        logger.info("Starting CSP validation",
-                   csp_file=csp_file,
-                   path=path,
-                   operation="validate_csp")
+        logger.info(
+            "Starting CSP validation",
+            csp_file=csp_file,
+            path=path,
+            operation="validate_csp",
+        )
 
         # Read the existing CSP header
         try:
             with open(csp_file, "r", encoding="utf-8") as f:
                 existing_csp = f.read().strip()
         except Exception as e:
-            logger.error("Failed to read CSP file",
-                        csp_file=csp_file,
-                        error=str(e),
-                        operation="validate_csp",
-                        error_code=ErrorCodes.FILE_NOT_FOUND,
-                        exc_info=True)
+            logger.error(
+                "Failed to read CSP file",
+                csp_file=csp_file,
+                error=str(e),
+                operation="validate_csp",
+                error_code=ErrorCodes.FILE_NOT_FOUND,
+                exc_info=True,
+            )
             return False
 
         # Scan the directory to collect current resources
@@ -240,19 +263,23 @@ class CSPGenerator:
 
         # Compare the two CSP headers
         if existing_csp == new_csp:
-            logger.info("CSP validation passed",
-                       csp_file=csp_file,
-                       operation="validate_csp")
+            logger.info(
+                "CSP validation passed", csp_file=csp_file, operation="validate_csp"
+            )
             return True
         else:
-            logger.warning("CSP validation failed",
-                         csp_file=csp_file,
-                         operation="validate_csp",
-                         error_code=ErrorCodes.VALIDATION_ERROR)
-            logger.debug("CSP comparison",
-                        existing_csp=existing_csp,
-                        new_csp=new_csp,
-                        operation="validate_csp")
+            logger.warning(
+                "CSP validation failed",
+                csp_file=csp_file,
+                operation="validate_csp",
+                error_code=ErrorCodes.VALIDATION_ERROR,
+            )
+            logger.debug(
+                "CSP comparison",
+                existing_csp=existing_csp,
+                new_csp=new_csp,
+                operation="validate_csp",
+            )
 
             # Parse and compare CSPs
             existing_directives = self._parse_csp(existing_csp)

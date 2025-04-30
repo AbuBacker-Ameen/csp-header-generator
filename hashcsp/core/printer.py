@@ -52,11 +52,13 @@ class Printer:
         - If set to "1": Plain text output
         - Otherwise: Rich text table with formatting
         """
-        logger.info("Generating summary report",
-                   files_processed=self.stats["files_processed"],
-                   unique_script_hashes=self.stats["unique_script_hashes"],
-                   unique_style_hashes=self.stats["unique_style_hashes"],
-                   operation="print_summary_report")
+        logger.info(
+            "Generating summary report",
+            files_processed=self.stats["files_processed"],
+            unique_script_hashes=self.stats["unique_script_hashes"],
+            unique_style_hashes=self.stats["unique_style_hashes"],
+            operation="print_summary_report",
+        )
 
         if os.environ.get("CSP_PLAIN_OUTPUT") == "1":
             print("CSP Generation Report :dart:")
@@ -135,10 +137,12 @@ class Printer:
         - If set to "1": Plain text output
         - Otherwise: Rich text tables with formatting
         """
-        logger.info("Comparing CSP configurations",
-                   existing_directives=len(existing),
-                   generated_directives=len(generated),
-                   operation="print_csp_diff")
+        logger.info(
+            "Comparing CSP configurations",
+            existing_directives=len(existing),
+            generated_directives=len(generated),
+            operation="print_csp_diff",
+        )
 
         if os.environ.get("CSP_PLAIN_OUTPUT") == "1":
             print("CSP Mismatch Details :warning:")
@@ -351,8 +355,10 @@ class Printer:
                 console.print("\n")
                 console.print(Align.center(metrics_table))
 
-            logger.info("CSP comparison completed",
-                       differences_count=len(differences),
-                       missing_directives=len(missing_directives),
-                       extra_directives=len(extra_directives),
-                       operation="print_csp_diff")
+            logger.info(
+                "CSP comparison completed",
+                differences_count=len(differences),
+                missing_directives=len(missing_directives),
+                extra_directives=len(extra_directives),
+                operation="print_csp_diff",
+            )

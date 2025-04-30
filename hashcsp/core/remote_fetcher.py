@@ -78,11 +78,13 @@ class RemoteFetcher:
             suggested_url = (
                 f"https://{url}" if not url.startswith("http://") else f"http://{url}"
             )
-            logger.error("Invalid URL protocol",
-                        url=url,
-                        suggested_url=suggested_url,
-                        operation="fetch_remote_site",
-                        error_code=ErrorCodes.VALIDATION_ERROR)
+            logger.error(
+                "Invalid URL protocol",
+                url=url,
+                suggested_url=suggested_url,
+                operation="fetch_remote_site",
+                error_code=ErrorCodes.VALIDATION_ERROR,
+            )
             console.print(
                 f"[red]Invalid URL: '{url}'. URLs must start with 'http://' or 'https://'. [/red]"
                 f"[yellow]Did you mean '{suggested_url}'?[/yellow]"
@@ -91,10 +93,10 @@ class RemoteFetcher:
 
         try:
             async with async_playwright() as p:
-                logger.debug("Launching browser",
-                           url=url,
-                           operation="fetch_remote_site")
-                
+                logger.debug(
+                    "Launching browser", url=url, operation="fetch_remote_site"
+                )
+
                 # Configure stealth settings to bypass bot protection
                 browser: Browser = await p.chromium.launch(headless=True)
                 context = await browser.new_context(
@@ -119,21 +121,27 @@ class RemoteFetcher:
                         network_resources["scripts"].append(request.url)
                         external_js_urls.append(request.url)
                         self.csp.stats["external_scripts"] += 1
-                        logger.debug("Detected external script",
-                                   url=request.url,
-                                   operation="handle_request")
+                        logger.debug(
+                            "Detected external script",
+                            url=request.url,
+                            operation="handle_request",
+                        )
                     elif resource_type == "stylesheet":
                         network_resources["styles"].append(request.url)
                         self.csp.stats["external_styles"] += 1
-                        logger.debug("Detected external stylesheet",
-                                   url=request.url,
-                                   operation="handle_request")
+                        logger.debug(
+                            "Detected external stylesheet",
+                            url=request.url,
+                            operation="handle_request",
+                        )
                     elif resource_type == "image":
                         network_resources["images"].append(request.url)
                         self.csp.stats["external_images"] += 1
-                        logger.debug("Detected external image",
-                                   url=request.url,
-                                   operation="handle_request")
+                        logger.debug(
+                            "Detected external image",
+                            url=request.url,
+                            operation="handle_request",
+                        )
 
                 page.on("request", handle_request)
 
@@ -141,12 +149,14 @@ class RemoteFetcher:
                 website_csp_header: Optional[str] = None
                 for attempt in range(retries + 1):
                     try:
-                        logger.info("Attempting to fetch URL",
-                                  url=url,
-                                  attempt=attempt + 1,
-                                  total_attempts=retries + 1,
-                                  operation="fetch_remote_site")
-                        
+                        logger.info(
+                            "Attempting to fetch URL",
+                            url=url,
+                            attempt=attempt + 1,
+                            total_attempts=retries + 1,
+                            operation="fetch_remote_site",
+                        )
+
                         response: Optional[Response] = await page.goto(
                             url, wait_until="networkidle", timeout=30000
                         )
@@ -154,18 +164,24 @@ class RemoteFetcher:
                             headers = await response.all_headers()
                             website_csp_header = headers.get("content-security-policy")
                             if website_csp_header:
-                                logger.info("Found CSP header",
-                                          url=url,
-                                          operation="fetch_remote_site")
+                                logger.info(
+                                    "Found CSP header",
+                                    url=url,
+                                    operation="fetch_remote_site",
+                                )
                             else:
-                                logger.info("No CSP header found",
-                                          url=url,
-                                          operation="fetch_remote_site")
+                                logger.info(
+                                    "No CSP header found",
+                                    url=url,
+                                    operation="fetch_remote_site",
+                                )
                         else:
-                            logger.error("No response received",
-                                       url=url,
-                                       operation="fetch_remote_site",
-                                       error_code=ErrorCodes.NETWORK_ERROR)
+                            logger.error(
+                                "No response received",
+                                url=url,
+                                operation="fetch_remote_site",
+                                error_code=ErrorCodes.NETWORK_ERROR,
+                            )
                             if attempt == retries:
                                 await browser.close()
                                 return False, None
@@ -173,13 +189,15 @@ class RemoteFetcher:
                             continue
                         break
                     except Exception as e:
-                        logger.error("Failed to fetch URL",
-                                   url=url,
-                                   attempt=attempt + 1,
-                                   error=str(e),
-                                   operation="fetch_remote_site",
-                                   error_code=ErrorCodes.NETWORK_ERROR,
-                                   exc_info=True)
+                        logger.error(
+                            "Failed to fetch URL",
+                            url=url,
+                            attempt=attempt + 1,
+                            error=str(e),
+                            operation="fetch_remote_site",
+                            error_code=ErrorCodes.NETWORK_ERROR,
+                            exc_info=True,
+                        )
                         if attempt == retries:
                             await browser.close()
                             return False, None
@@ -187,9 +205,11 @@ class RemoteFetcher:
 
                 # Perform user interactions based on interaction_level
                 if interaction_level >= 1:  # Basic interactions
-                    logger.debug("Performing basic interactions",
-                               url=url,
-                               operation="fetch_remote_site")
+                    logger.debug(
+                        "Performing basic interactions",
+                        url=url,
+                        operation="fetch_remote_site",
+                    )
                     await page.evaluate(
                         "window.scrollTo(0, document.body.scrollHeight)"
                     )
@@ -197,42 +217,50 @@ class RemoteFetcher:
                     await page.wait_for_load_state("networkidle")
 
                 if interaction_level >= 2:  # Advanced interactions
-                    logger.debug("Performing advanced interactions",
-                               url=url,
-                               operation="fetch_remote_site")
+                    logger.debug(
+                        "Performing advanced interactions",
+                        url=url,
+                        operation="fetch_remote_site",
+                    )
                     buttons = await page.query_selector_all(
                         "button, a[href], [onclick]"
                     )
-                    for i, element in enumerate(
-                        buttons[:5]
-                    ):  # Limit to 5 interactions
+                    for i, element in enumerate(buttons[:5]):  # Limit to 5 interactions
                         try:
                             await element.click()
-                            logger.debug(f"Clicked element {i + 1}",
-                                       url=url,
-                                       operation="fetch_remote_site")
+                            logger.debug(
+                                f"Clicked element {i + 1}",
+                                url=url,
+                                operation="fetch_remote_site",
+                            )
                             await page.wait_for_timeout(1000)
                             await page.wait_for_load_state("networkidle")
                         except Exception as e:
-                            logger.warning(f"Failed to click element {i + 1}",
-                                         url=url,
-                                         error=str(e),
-                                         operation="fetch_remote_site")
+                            logger.warning(
+                                f"Failed to click element {i + 1}",
+                                url=url,
+                                error=str(e),
+                                operation="fetch_remote_site",
+                            )
 
                     hoverable = await page.query_selector_all("[onmouseover]")
                     for i, element in enumerate(hoverable[:5]):
                         try:
                             await element.hover()
-                            logger.debug(f"Hovered over element {i + 1}",
-                                       url=url,
-                                       operation="fetch_remote_site")
+                            logger.debug(
+                                f"Hovered over element {i + 1}",
+                                url=url,
+                                operation="fetch_remote_site",
+                            )
                             await page.wait_for_timeout(500)
                             await page.wait_for_load_state("networkidle")
                         except Exception as e:
-                            logger.warning(f"Failed to hover over element {i + 1}",
-                                         url=url,
-                                         error=str(e),
-                                         operation="fetch_remote_site")
+                            logger.warning(
+                                f"Failed to hover over element {i + 1}",
+                                url=url,
+                                error=str(e),
+                                operation="fetch_remote_site",
+                            )
 
                 # Analyze external JS for DOM insertion
                 for js_url in external_js_urls:
@@ -247,10 +275,12 @@ class RemoteFetcher:
                                 "innerhtml",
                             ]
                         ):
-                            logger.info("Detected dynamic DOM insertion",
-                                      url=url,
-                                      js_url=js_url,
-                                      operation="fetch_remote_site")
+                            logger.info(
+                                "Detected dynamic DOM insertion",
+                                url=url,
+                                js_url=js_url,
+                                operation="fetch_remote_site",
+                            )
                             # Simulate DOM insertion
                             await page.evaluate(
                                 """
@@ -262,11 +292,13 @@ class RemoteFetcher:
                             await page.wait_for_timeout(1000)
                             await page.wait_for_load_state("networkidle")
                     except Exception as e:
-                        logger.warning("Failed to analyze JS file",
-                                     url=url,
-                                     js_url=js_url,
-                                     error=str(e),
-                                     operation="fetch_remote_site")
+                        logger.warning(
+                            "Failed to analyze JS file",
+                            url=url,
+                            js_url=js_url,
+                            error=str(e),
+                            operation="fetch_remote_site",
+                        )
 
                 # Get page content after interactions
                 content = await page.content()
@@ -276,12 +308,14 @@ class RemoteFetcher:
                 inline_scripts = soup.find_all("script", src=False)
                 for script in inline_scripts:
                     if not isinstance(script, Tag):
-                        logger.error("Invalid script element type",
-                                   url=url,
-                                   expected_type="Tag",
-                                   actual_type=type(script),
-                                   operation="fetch_remote_site",
-                                   error_code=ErrorCodes.VALIDATION_ERROR)
+                        logger.error(
+                            "Invalid script element type",
+                            url=url,
+                            expected_type="Tag",
+                            actual_type=type(script),
+                            operation="fetch_remote_site",
+                            error_code=ErrorCodes.VALIDATION_ERROR,
+                        )
                         raise TypeError(f"Expected Tag, got {type(script)}")
                     script_content: Optional[str] = script.string
                     if script_content and script_content.strip():
@@ -292,21 +326,25 @@ class RemoteFetcher:
                         ):
                             self.csp.hashes["script-src"].append(hash_value)
                             self.csp.stats["unique_script_hashes"] += 1
-                            logger.debug("Added script hash",
-                                       url=url,
-                                       hash=hash_value,
-                                       operation="fetch_remote_site")
+                            logger.debug(
+                                "Added script hash",
+                                url=url,
+                                hash=hash_value,
+                                operation="fetch_remote_site",
+                            )
 
                 # Process inline styles
                 inline_styles = soup.find_all("style")
                 for style in inline_styles:
                     if not isinstance(style, Tag):
-                        logger.error("Invalid style element type",
-                                   url=url,
-                                   expected_type="Tag",
-                                   actual_type=type(style),
-                                   operation="fetch_remote_site",
-                                   error_code=ErrorCodes.VALIDATION_ERROR)
+                        logger.error(
+                            "Invalid style element type",
+                            url=url,
+                            expected_type="Tag",
+                            actual_type=type(style),
+                            operation="fetch_remote_site",
+                            error_code=ErrorCodes.VALIDATION_ERROR,
+                        )
                         raise TypeError(f"Expected Tag, got {type(style)}")
                     style_content: Optional[str] = style.string
                     if style_content and style_content.strip():
@@ -317,10 +355,12 @@ class RemoteFetcher:
                         ):
                             self.csp.hashes["style-src"].append(hash_value)
                             self.csp.stats["unique_style_hashes"] += 1
-                            logger.debug("Added style hash",
-                                       url=url,
-                                       hash=hash_value,
-                                       operation="fetch_remote_site")
+                            logger.debug(
+                                "Added style hash",
+                                url=url,
+                                hash=hash_value,
+                                operation="fetch_remote_site",
+                            )
 
                 # Update directives with network resources
                 for script_url in network_resources["scripts"]:
@@ -337,21 +377,25 @@ class RemoteFetcher:
                 await page.wait_for_timeout(wait_time * 1000)
                 await page.wait_for_load_state("networkidle")
 
-                logger.info("Successfully fetched and analyzed site",
-                          url=url,
-                          script_count=len(network_resources["scripts"]),
-                          style_count=len(network_resources["styles"]),
-                          image_count=len(network_resources["images"]),
-                          operation="fetch_remote_site")
+                logger.info(
+                    "Successfully fetched and analyzed site",
+                    url=url,
+                    script_count=len(network_resources["scripts"]),
+                    style_count=len(network_resources["styles"]),
+                    image_count=len(network_resources["images"]),
+                    operation="fetch_remote_site",
+                )
 
                 await browser.close()
                 return True, website_csp_header
 
         except Exception as e:
-            logger.error("Error during site fetch",
-                        url=url,
-                        error=str(e),
-                        operation="fetch_remote_site",
-                        error_code=ErrorCodes.NETWORK_ERROR,
-                        exc_info=True)
+            logger.error(
+                "Error during site fetch",
+                url=url,
+                error=str(e),
+                operation="fetch_remote_site",
+                error_code=ErrorCodes.NETWORK_ERROR,
+                exc_info=True,
+            )
             return False, None

@@ -75,7 +75,7 @@ def generate(
     dry_run: bool = typer.Option(
         False,
         "--dry-run",
-        help="Preview CSP output without writing to disk.",
+        help="Preview output without writing to disk.",
     ),
 ):
     """Generate CSP headers for HTML files.
@@ -97,7 +97,7 @@ def generate(
         directives_file (str, optional): JSON file with directives.
         json_output (bool, optional): Use JSON output format. Defaults to False.
         lint (bool, optional): Enable security linting. Defaults to False.
-        dry_run (bool, optional): Preview mode. Defaults to False.
+        dry_run (bool, optional): Flag for preview mode. Defaults to False.
 
     Raises:
         typer.Exit: Exits with code 1 on error, 0 on success.
