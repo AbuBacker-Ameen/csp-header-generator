@@ -126,11 +126,15 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-root
 
-      - name: Install safety
-        run: pip install safety
+      # - name: Install safety
+      #   run: pip install safety
 
-      - name: Run safety (dependency vulnerability scan)
-        run: poetry run safety check --full-report
+      # - name: Run safety (dependency vulnerability scan)
+      #   run: poetry run safety check --full-report
+      - name: Run Safety CLI to check for vulnerabilities
+        uses: pyupio/safety-action@v1
+        with:
+          api-key: ${{ secrets.SAFETY_API_KEY }}
 
       - name: Install detect-secrets
         run: pip install detect-secrets
