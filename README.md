@@ -6,332 +6,190 @@
 [![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)](https://github.com/AbuBacker-Ameen/HashCSP/blob/main/Dockerfile)
 [![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
 
-HashCSP is a Python tool designed to generate and validate Content Security
-Policy (CSP) headers for web applications. It helps developers secure their
-websites by creating CSP headers that mitigate risks like Cross-Site Scripting
-(XSS) by specifying trusted sources for scripts, styles, and other resources.
-
-HashCSP supports both local file scanning and remote website fetching, making it
-versatile for different workflows. It provides detailed reports and mismatch
-metrics to help you fine-tune your CSP policies.
+HashCSP is a powerful Python tool designed to generate and validate Content Security Policy (CSP) headers for web applications. It helps developers secure their websites by creating comprehensive CSP headers that mitigate risks like Cross-Site Scripting (XSS) by specifying trusted sources for scripts, styles, and other resources.
 
 ## Features
 
-- **Generate CSP Headers**: Scan local HTML files to generate a CSP header,
-  including hashes for inline scripts and styles, and external resources.
-- **Validate CSP Headers**: Compare an existing CSP header against scanned
-  resources, with detailed mismatch reports and metrics (e.g., missing/extra
-  hashes and links).
-- **Fetch Remote Sites**: Use Playwright to fetch remote websites, extract
-  resources, and generate CSP headers.
-- **User-Friendly Output**: Rich formatting for summary reports and mismatch
-  tables, with limits on large difference tables for readability.
-- **Type Safety**: Fully type-checked codebase using `mypy` for reliability.
-- **Modular Design**: Separated concerns with a dedicated `Printer` class for
-  output formatting.
-- **Structured Logging**: JSON-based logging system with rich contextual metadata,
-  perfect for debugging and monitoring in production environments.
+### Core Functionality
+- **Generate CSP Headers**: Scan local HTML files to generate CSP headers with:
+  - Hashes for inline scripts and styles
+  - External resource tracking
+  - Smart directive management
+- **Validate CSP Headers**: Compare existing CSP headers against scanned resources with:
+  - Detailed mismatch reports
+  - Hash and link difference metrics
+  - Suggestions for updates
 
-## Configuration
+### Advanced Capabilities
+- **Remote Site Analysis**:
+  - Fetch and analyze remote websites using Playwright
+  - Support for dynamic content and JavaScript execution
+  - Multiple interaction levels (none, basic scrolling, advanced clicking/hovering)
+  - Smart retry logic for reliability
+- **Dynamic Content Handling**:
+  - Capture dynamically inserted scripts and styles
+  - Track network requests in real-time
+  - Adaptive waiting based on DOM mutations
+  - Late-loaded resource hashing
 
-### Logging Configuration
-
-HashCSP uses a comprehensive logging system that supports both development and production environments. The logging system can be configured through environment variables:
-
-- `LOG_LEVEL`: Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). Default: INFO
-- `LOG_FORMAT`: Choose the output format (json, console). Default: console
-- `LOG_FILE`: Specify the log file path. Default: hashcsp/logs/hashcsp.log
-- `LOG_MAX_BYTES`: Set maximum log file size in bytes. Default: 10MB
-- `LOG_BACKUP_COUNT`: Number of backup files to keep. Default: 5
-
-#### JSON Log Format
-
-In production environments, logs are written in JSON format for easy parsing and integration with log aggregation tools. Example log entry:
-
-```json
-{
-    "timestamp": "2025-04-30T12:00:00Z",
-    "level": "ERROR",
-    "message": "Invalid JSON in config.json",
-    "module": "config",
-    "file_path": "config.json",
-    "function": "load_config",
-    "line_number": 43,
-    "error_code": "INVALID_JSON",
-    "request_id": "abc123",
-    "operation": "load_config"
-}
-```
-
-#### Development Mode
-
-In development, logs are displayed with rich formatting in the console for better readability:
-
-```bash
-export LOG_FORMAT=console
-export LOG_LEVEL=DEBUG
-hashcsp generate -p ./public
-```
-
-#### Production Mode
-
-For production environments, enable JSON logging for better integration with log aggregation tools:
-
-```bash
-export LOG_FORMAT=json
-export LOG_LEVEL=INFO
-hashcsp generate -p ./public
-```
-
-#### Log Analysis
-
-The JSON log format makes it easy to analyze logs using standard tools:
-
-```bash
-# Find all ERROR logs
-jq 'select(.level=="ERROR")' hashcsp/logs/hashcsp.log
-
-# Count occurrences of each error code
-jq 'select(.error_code != null) | .error_code' hashcsp/logs/hashcsp.log | sort | uniq -c
-
-# Track operations by request_id
-jq 'select(.request_id=="abc123")' hashcsp/logs/hashcsp.log
-```
-
-#### Security Events
-
-The logging system is designed to track security-relevant events:
-
-- Unsafe CSP directives (e.g., 'unsafe-inline')
-- File access failures
-- Configuration validation errors
-- Network request failures
-
-Sensitive data (like API keys) is automatically filtered from logs.
+### Developer Experience
+- **Rich CLI Interface**:
+  - Colored output with progress indicators
+  - Detailed error reporting
+  - Dry-run mode for preview
+  - Verbose and silent modes
+- **Comprehensive Logging**:
+  - Structured JSON logging
+  - Configurable log levels and formats
+  - Detailed error context
+  - Audit trail for debugging
 
 ## Installation
 
 ### Prerequisites
-
-- Python 3.8 or higher
+- Python 3.12 or higher
 - [Poetry](https://python-poetry.org/) for dependency management
-
-#### What is Poetry?
-
-[**Poetry**](https://python-poetry.org/) is a modern dependency and package
-manager for Python. It simplifies:
-
-- Installing and managing dependencies
-- Creating and using virtual environments automatically
-- Building and publishing Python packages (like `hashcsp`)
-- Managing tool versioning via `pyproject.toml`
-
-It's a cleaner alternative to using `pip` and `requirements.txt`.
-
-##### How to Install Poetry
-
-1. Run the official install script:
-
-   ```bash
-   curl -sSL https://install.python-poetry.org | python3 -
-   ```
-
-2. Add Poetry to your shell environment if needed (it tells you how after
-   install), or restart your terminal.
-
-3. Verify it worked:
-
-```bash
-poetry --version
-```
 
 ### Steps
 
-1. **Clone the Repository**:
-
+1. Clone the repository:
    ```bash
    git clone https://github.com/AbuBacker-Ameen/HashCSP.git
    cd HashCSP
    ```
 
 2. Install with Poetry:
-
    ```bash
    poetry install
    eval $(poetry env activate) # To activate poetry environment
    ```
 
-3. Install Playwright Browsers: The fetch command uses Playwright to fetch
-   remote sites. Install the required browsers:
-
+3. Install Playwright browsers (required for remote site analysis):
    ```bash
    playwright install
    ```
 
-4. Verify Installation: Check that the CLI is working:
+### Docker Alternative
 
-   ```bash
-   hashcsp --help
-   ```
-
----
-
-## Docker Alternative
-
+Build:
 ```bash
 docker-compose build
 ```
 
 Run:
-
 ```bash
 docker-compose run --rm hashcsp --help
 ```
 
----
-
 ## Usage
 
-HashCSP provides three main commands: `generate`, `validate`, and `fetch`. Below
-are examples of how to use each.
+HashCSP provides three main commands: `generate`, `validate`, and `fetch`.
 
-### 1. Generate a CSP Header for Local Files
+### 1. Generate CSP Headers
 
-Scan a directory of HTML files to generate a CSP header.
+Generate a CSP header by scanning local HTML files:
 
 ```bash
 hashcsp generate -p ./public
 ```
 
-- **Options**:
-  - `-p/--path`: Directory containing HTML files (required).
-  - `-o/--output`: Output file for the CSP header (defaults to `csp.conf`).
-  - `-d/--directives`: Comma-separated directive:value pairs (e.g.,
-    `script-src:'self' https://example.com`).
-  - `-f/--directives-file`: File containing directives (one per line, format:
-    `directive:value`).
+Options:
+- `-p/--path`: Directory containing HTML files (required)
+- `-o/--output`: Output file (defaults to `csp.conf`)
+- `-d/--directives`: Add custom directives (e.g., `script-src:'self' https://example.com`)
+- `-f/--directives-file`: Load directives from JSON file
+- `--json-output`: Output in JSON format
+- `--lint`: Check for unsafe sources
+- `--dry-run`: Preview without writing to disk
 
-**Example Output**: A `csp.conf` file will be created with the generated CSP
-header, and a summary report will be printed, detailing the number of files
-processed, unique hashes, and external resources.
+### 2. Validate CSP Headers
 
-### 2. Validate an Existing CSP Header
-
-Compare an existing CSP header against the current state of your files.
+Compare an existing CSP header against current resources:
 
 ```bash
 hashcsp validate -p ./public -f csp.conf
 ```
 
-- **Options**:
-  - `-p/--path`: Directory containing HTML files (required).
-  - `-f/--file`: File containing the existing CSP header (required).
+Options:
+- `-p/--path`: Directory containing HTML files (required)
+- `-f/--file`: Existing CSP header file (required)
 
-**Example Output**: If there's a mismatch, HashCSP will display a detailed
-report with:
+### 3. Analyze Remote Sites
 
-- A "CSP Mismatch Details" table (limited to 10 differences for large policies).
-- A "Mismatch Metrics" table showing counts of missing/extra hashes and links.
-- Suggestions for fixing the CSP header.
-
-### 3. Fetch a Remote Site and Generate a CSP Header
-
-Fetch a website, retrieve its CSP header (if any), and generate a computed CSP
-header based on its resources. Supports dynamic websites with user interaction
-simulation.
+Fetch and analyze a remote website:
 
 ```bash
-hashcsp fetch -u https://developer.mozilla.org --compare --interaction-level 2 --retries 3
+hashcsp fetch -u https://example.com --interaction-level 2 --wait 5 --compare
 ```
 
-- **Options**:
-  - `-u/--url`: URL of the website to fetch (required). Must include `http://`
-    or `https://`.
-  - `-o/--output`: Output file for the computed CSP header (defaults to
-    `csp.conf`).
-  - `-w/--wait`: Time to wait for additional resources (in seconds, defaults to
-    2).
-  - `--compare`: Compare the website's CSP header with the computed CSP header.
-  - `-i/--interaction-level`: Level of user interaction (0 = none, 1 = basic
-    scrolling, 2 = advanced clicking/hovering, defaults to 0).
-  - `-r/--retries`: Number of retry attempts for failed fetches (defaults to 2).
+Options:
+- `-u/--url`: Website URL (required)
+- `-o/--output`: Output file (defaults to `csp.conf`)
+- `-w/--wait`: Wait time for resources in seconds (default: 2)
+- `--compare`: Compare with site's existing CSP
+- `-i/--interaction-level`: User interaction simulation:
+  - `0`: No interaction (default)
+  - `1`: Basic scrolling
+  - `2`: Advanced clicking/hovering
+- `-r/--retries`: Number of retry attempts (default: 2)
+- `--dry-run`: Preview mode
 
-**Example Output**:
+## Configuration
 
-```plaintext
-=== Website's CSP Header ===
-default-src 'self'; script-src 'self' https://*.mozilla.org; ...
+### Logging Configuration
 
-=== Computed CSP Header ===
-default-src 'self'; script-src 'self' 'sha256-...' https://*.mozilla.org; ...
+Configure logging behavior through environment variables:
+- `LOG_LEVEL`: Set logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- `LOG_FORMAT`: Choose output format (json, console)
+- `LOG_FILE`: Specify log file path
+- `LOG_MAX_BYTES`: Maximum log file size
+- `LOG_BACKUP_COUNT`: Number of backup files to keep
 
-=== CSP Comparison ===
-[CSP Mismatch Details table and Mismatch Metrics table]
-
-Computed CSP header written to csp.conf
+Example:
+```bash
+export LOG_FORMAT=json
+export LOG_LEVEL=INFO
+hashcsp generate -p ./public
 ```
 
-If the website has no CSP header:
+### CSP Configuration
 
-```plaintext
-=== Website's CSP Header ===
-No CSP header found in the website's response.
+Create a `hashcsp.json` file to define default CSP directives:
 
-=== Computed CSP Header ===
-default-src 'self'; script-src 'self' 'sha256-...'; ...
-
-Computed CSP header written to csp.conf
+```json
+{
+  "directives": {
+    "default-src": ["'self'"],
+    "script-src": ["'self'", "https://trusted.com"],
+    "style-src": ["'self'"]
+  }
+}
 ```
 
 ## Contributing
 
-I welcome contributions to HashCSP, Here's how to get started:
-
-1. **Fork the Repository**: Fork the project on GitHub and clone your fork:
-
-   ```bash
-   git clone https://github.com/AbuBacker-Ameen/HashCSP.git
-   cd hashcsp
-   ```
-
-2. **Set Up the Development Environment**: Install dependencies and Playwright
-   browsers:
-
+1. Fork the repository
+2. Install development dependencies:
    ```bash
    poetry install --with dev
-   poetry run playwright install
    ```
-
-3. **Create a Feature Branch**:
-
+3. Run tests:
    ```bash
-   git checkout -b feature/your-feature-name
+   poetry run pytest
    ```
-
-4. **Make Changes**:
-
-   - Follow the existing code style and structure.
-   - Add tests for new features or bug fixes.
-   - Run type checks with `mypy`:
-
-     ```bash
-     mypy hashcsp
-     ```
-
-5. **Commit and Push**: Use semantic commit messages (e.g.,
-   `feat: add new feature`, `fix: resolve bug`):
-
+4. Ensure code quality:
    ```bash
-   git commit -m "feat: add new feature"
-   git push origin feature/your-feature-name
+   poetry run ruff check .
+   poetry run black .
+   poetry run isort .
+   poetry run mypy hashcsp
    ```
-
-6. **Open a Pull Request**: Submit a pull request to the main repository,
-   describing your changes and their impact.
+5. Submit a pull request
 
 ## License
 
-HashCSP is licensed under the MIT License. See the [LICENSE](LICENSE) file for
-details.
+HashCSP is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-➡️ See [ROADMAP.md](./ROADMAP.md) for upcoming features and plans.
+## Roadmap
+
+See [ROADMAP.md](./ROADMAP.md) for upcoming features and development plans.
