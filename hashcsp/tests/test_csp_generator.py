@@ -1,202 +1,179 @@
-# import logging
-# from contextlib import redirect_stdout
-# from io import StringIO
+import hashlib
+import pytest
+from hashcsp.core.csp_generator import CSPGenerator
+from hashcsp.core.local_scanner import LocalScanner
 
-# import pytest
-# import requests_mock
-# from rich.console import Console
+@pytest.fixture
+def csp_generator():
+    """Fixture to provide a fresh CSPGenerator instance for each test."""
+    return CSPGenerator()
 
-# from .. import __logfile__
-# from ..core.csp_generator import CSPGenerator
+# compute_hash tests
+def test_compute_hash_normal(csp_generator):
+    content = "console.log('test');"
+    expected_hash = "'sha256-" + hashlib.sha256(content.encode("utf-8")).hexdigest() + "'"
+    hash_value = csp_generator.compute_hash(content, "test_source")
+    assert hash_value.startswith("'sha256-")
+    assert len(hash_value) == 8 + 64 + 1  # "'sha256-" (8) + hex (64) + "'" (1)
+    assert hash_value == expected_hash
 
+def test_compute_hash_empty_content(csp_generator):
+    hash_value = csp_generator.compute_hash("", "test_source")
+    assert hash_value == ""
 
-# @pytest.fixture
-# def csp_generator():
-#     return CSPGenerator()
+def test_compute_hash_special_characters(csp_generator):
+    # Test hashing of content with non-ASCII (Unicode) characters to ensure proper UTF-8 encoding
+    content = "alert('Hello, 世界!');"
+    hash_value = csp_generator.compute_hash(content, "test_source")
+    assert hash_value.startswith("'sha256-")
+    assert len(hash_value) == 8 + 64 + 1  # "'sha256-" (8) + hex (64) + "'" (1)
 
+def test_compute_hash_large_content(csp_generator):
+    large_content = "let x = 1;" * 10000
+    hash_value = csp_generator.compute_hash(large_content, "test_source")
+    assert hash_value.startswith("'sha256-")
+    assert len(hash_value) == 8 + 64 + 1  # "'sha256-" (8) + hex (64) + "'" (1)
 
-# @pytest.fixture
-# def console_output():
-#     return Console(file=StringIO(), force_terminal=True, width=80)
+# update_directive tests
+def test_update_directive_new(csp_generator):
+    csp_generator.update_directive("script-src", ["'self'", "https://example.com"])
+    assert csp_generator.directives["script-src"] == ["'self'", "https://example.com"]
 
+def test_update_directive_existing(csp_generator):
+    csp_generator.directives["script-src"] = ["'self'"]
+    csp_generator.update_directive("script-src", ["https://example.com"])
+    assert csp_generator.directives["script-src"] == ["https://example.com"]
 
-# def test_compute_hash(csp_generator, tmp_path):
-#     content = "console.log('test');"
-#     log_file = tmp_path / __logfile__
-#     logging.basicConfig(filename=log_file, level=logging.DEBUG, force=True)
-#     hash_value = csp_generator.compute_hash(content, "test")
-#     assert hash_value.startswith("'sha256-")
-#     with open(log_file, "r") as f:
-#         log_content = f.read()
-#         assert f"Computed hash {hash_value} for content from test" in log_content
+def test_update_directive_empty_sources(csp_generator):
+    csp_generator.update_directive("script-src", [])
+    assert "script-src" not in csp_generator.directives
 
+def test_update_directive_whitespace_sources(csp_generator):
+    csp_generator.update_directive("script-src", [" ", "'self'", ""])
+    assert csp_generator.directives["script-src"] == [" ", "'self'"]
 
-# def test_scan_html_file(csp_generator, tmp_path, console_output):
-#     html_content = """
-#     <html>
-#         <script>console.log('test');</script>
-#         <style>body { color: blue; }</style>
-#     </html>
-#     """
-#     html_file = tmp_path / "test.html"
-#     html_file.write_text(html_content)
+# lint_directives tests
+def test_lint_directives_safe(csp_generator):
+    csp_generator.directives = {"script-src": ["'self'"], "style-src": ["https://cdn.com"]}
+    warnings = csp_generator.lint_directives()
+    assert len(warnings) == 0
 
-#     csp_generator.scan_html_file(str(html_file))
-#     assert csp_generator.stats["unique_script_hashes"] == 1
-#     assert csp_generator.stats["unique_style_hashes"] == 1
-#     assert csp_generator.stats["files_processed"] == 1
-#     assert csp_generator.stats["files_with_no_inline_scripts"] == 0
+def test_lint_directives_unsafe(csp_generator):
+    csp_generator.directives = {"script-src": ["'self'", "'unsafe-inline'"], "style-src": ["*"]}
+    warnings = csp_generator.lint_directives()
+    assert len(warnings) == 2
+    assert "Unsafe source ''unsafe-inline'' found in script-src" in warnings
+    assert "Unsafe source '*' found in style-src" in warnings
 
+def test_lint_directives_multiple_unsafe(csp_generator):
+    csp_generator.directives = {
+        "script-src": ["'unsafe-inline'", "*"],
+        "style-src": ["data:"]
+    }
+    warnings = csp_generator.lint_directives()
+    assert len(warnings) == 3
+    assert "Unsafe source ''unsafe-inline'' found in script-src" in warnings
+    assert "Unsafe source '*' found in script-src" in warnings
+    assert "Unsafe source 'data:' found in style-src" in warnings
 
-# def test_fetch_remote_site_success(csp_generator, console_output):
-#     with requests_mock.Mocker() as m:
-#         m.get(
-#             "https://example.com",
-#             text="""
-#         <html>
-#             <script>console.log('remote');</script>
-#             <link rel="stylesheet" href="https://example.com/style.css">
-#         </html>
-#         """,
-#         )
-#         success = csp_generator.fetch_remote_site("https://example.com")
-#         assert success
-#         assert csp_generator.stats["unique_script_hashes"] == 1
-#         assert csp_generator.stats["external_styles"] == 1
-#         assert csp_generator.stats["files_with_no_inline_scripts"] == 0
+def test_lint_directives_custom(csp_generator):
+    csp_generator.directives = {"custom-directive": ["'unsafe-inline'"]}
+    warnings = csp_generator.lint_directives()
+    assert len(warnings) == 1
+    assert "Unsafe source ''unsafe-inline'' found in custom-directive" in warnings
 
+# generate_csp tests
+def test_generate_csp_default(csp_generator, capsys, monkeypatch):
+    monkeypatch.setenv("CSP_PLAIN_OUTPUT", "1")  # Force plain text output
+    csp_header = csp_generator.generate_csp(report=True)
+    assert "default-src 'self'" in csp_header
+    assert "script-src 'self'" in csp_header
+    captured = capsys.readouterr()
+    assert "Files Processed :page_facing_up: : 0" in captured.out
+    assert ":sparkles: CSP Header Generated Successfully!" in captured.out
 
-# def test_fetch_remote_site_failure(csp_generator, console_output):
-#     with requests_mock.Mocker() as m:
-#         m.get("https://example.com", status_code=404)
-#         success = csp_generator.fetch_remote_site("https://example.com")
-#         assert not success
-#         assert csp_generator.stats["unique_script_hashes"] == 0
-#         assert csp_generator.stats["files_with_no_inline_scripts"] == 0
+def test_generate_csp_with_hashes(csp_generator):
+    csp_generator.hashes["script-src"] = ["'sha256-abc123'"]
+    csp_generator.hashes["style-src"] = ["'sha256-def456'"]
+    csp_header = csp_generator.generate_csp(report=False)
+    assert "script-src 'self' 'sha256-abc123'" in csp_header
+    assert "style-src 'self' 'sha256-def456'" in csp_header
 
+def test_generate_csp_empty_directives(csp_generator):
+    csp_generator.directives = {"script-src": []}
+    csp_header = csp_generator.generate_csp(report=False)
+    assert csp_header == ""
 
-# def test_generate_csp_report(csp_generator, console_output, monkeypatch):
-#     csp_generator.stats["unique_script_hashes"] = 2
-#     csp_generator.stats["unique_style_hashes"] = 1
-#     csp_generator.stats["files_processed"] = 3
-#     csp_generator.stats["external_scripts"] = 1
-#     csp_generator.stats["files_with_no_inline_scripts"] = 0
-#     csp_generator.stats["external_styles"] = 0
-#     csp_generator.stats["external_images"] = 0
+def test_generate_csp_custom_directives(csp_generator):
+    csp_generator.directives = {"custom-src": ["https://custom.com"]}
+    csp_header = csp_generator.generate_csp(report=False)
+    assert "custom-src https://custom.com" in csp_header
 
-#     # Force plain output for testing
-#     monkeypatch.setenv("CSP_PLAIN_OUTPUT", "1")
+# _parse_csp tests
+def test_parse_csp_valid(csp_generator):
+    csp = "script-src 'self' https://example.com; style-src 'self';"
+    result = csp_generator._parse_csp(csp)
+    assert result == {
+        "script-src": ["'self'", "https://example.com"],
+        "style-src": ["'self'"]
+    }
 
-#     # Capture output using redirect_stdout
-#     output_buffer = StringIO()
-#     with redirect_stdout(output_buffer):
-#         csp_generator._print_summary_report()
+def test_parse_csp_empty(csp_generator):
+    result = csp_generator._parse_csp("")
+    assert result == {}
 
-#     output = output_buffer.getvalue()
-#     print("Captured console output:")
-#     print(output)
-#     print("Captured console output (escaped):")
-#     print(repr(output))
+def test_parse_csp_malformed(csp_generator):
+    csp = "script-src 'self'; invalid; style-src"
+    result = csp_generator._parse_csp(csp)
+    assert "script-src" in result
+    assert "style-src" in result
+    assert "invalid" in result
+    assert result["invalid"] == []
 
-#     # Assertions
-#     assert "CSP Generation Report :dart:" in output, "Report title not found"
-#     assert (
-#         "Files Processed :page_facing_up: : 3" in output
-#     ), "Files processed metric not found"
-#     assert (
-#         "Files With No inline scripts or styles :scroll: : 0" in output
-#     ), "No inline scripts metric not found"
-#     assert (
-#         "Unique Script Hashes :hammer_and_wrench: : 2" in output
-#     ), "Script hashes metric not found"
-#     assert "Unique Style Hashes :art: : 1" in output, "Style hashes metric not found"
-#     assert (
-#         "External Scripts :globe_with_meridians: : 1" in output
-#     ), "External scripts metric not found"
-#     assert "External Styles :art: : 0" in output, "External styles metric not found"
-#     assert (
-#         "External Images :framed_picture: : 0" in output
-#     ), "External images metric not found"
-#     assert (
-#         ":sparkles: CSP Header Generated Successfully!" in output
-#     ), "Success message not found"
+def test_parse_csp_no_sources(csp_generator):
+    csp = "script-src;"
+    result = csp_generator._parse_csp(csp)
+    assert result == {"script-src": []}
 
+# validate_csp tests
+@pytest.fixture
+def mock_scanner(monkeypatch):
+    def mock_scan_directory(self, directory):
+        self.csp.directives = {"script-src": ["'self'"], "style-src": ["'self'"]}
+        self.csp.hashes["script-src"] = ["'sha256-abc123'"]
+    monkeypatch.setattr(LocalScanner, "scan_directory", mock_scan_directory)
 
-# def test_validate_csp_match(csp_generator, tmp_path, console_output, monkeypatch):
-#     # Create a temporary CSP file
-#     csp_file = tmp_path / "csp.txt"
-#     csp_content = (
-#         "default-src 'self'; script-src 'self' https://example.com; style-src 'self'"
-#     )
-#     csp_file.write_text(csp_content)
+def test_validate_csp_matching(csp_generator, tmp_path, mock_scanner):
+    csp_file = tmp_path / "csp.conf"
+    csp_content = "script-src 'self' 'sha256-abc123'; style-src 'self';"
+    csp_file.write_text(csp_content)
+    result = csp_generator.validate_csp(str(csp_file), str(tmp_path))
+    assert result is True
 
-#     # Mock scan_directory to set directives
-#     csp_generator.directives = {
-#         "default-src": ["'self'"],
-#         "script-src": ["'self'", "https://example.com"],
-#         "style-src": ["'self'"],
-#     }
+def test_validate_csp_mismatching(csp_generator, tmp_path, mock_scanner, capsys, monkeypatch):
+    monkeypatch.setenv("CSP_PLAIN_OUTPUT", "1")  # Force plain text output
+    csp_file = tmp_path / "csp.conf"
+    csp_content = "script-src 'self';"
+    csp_file.write_text(csp_content)
+    result = csp_generator.validate_csp(str(csp_file), str(tmp_path))
+    assert result is False
+    captured = capsys.readouterr()
+    assert "Directive: script-src" in captured.out
+    assert "Missing in Existing: 'sha256-abc123'" in captured.out
+    assert "Directives missing in existing CSP: style-src" in captured.out
+    assert "Mismatch Metrics:" in captured.out
+    assert "script-src:" in captured.out
+    assert "Missing Hashes: 1" in captured.out
 
-#     # Force plain output for testing
-#     monkeypatch.setenv("CSP_PLAIN_OUTPUT", "1")
+def test_validate_csp_non_existent_file(csp_generator, tmp_path):
+    result = csp_generator.validate_csp(str(tmp_path / "nonexistent.conf"), str(tmp_path))
+    assert result is False
 
-#     # Capture output
-#     output_buffer = StringIO()
-#     with redirect_stdout(output_buffer):
-#         result = csp_generator.validate_csp(str(csp_file), str(tmp_path))
-
-#     output = output_buffer.getvalue()
-#     print("Captured console output for validate_csp_match:")
-#     print(output)
-
-#     assert result is True
-#     assert "CSP header is valid!" in output
-
-
-# def test_validate_csp_mismatch(csp_generator, tmp_path, console_output, monkeypatch):
-#     # Create a temporary CSP file with different content
-#     csp_file = tmp_path / "csp.txt"
-#     csp_content = (
-#         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
-#     )
-#     csp_file.write_text(csp_content)
-
-#     # Mock scan_directory to set directives and hashes
-#     csp_generator.directives = {
-#         "default-src": ["'self'"],
-#         "script-src": ["'self'", "https://example.com"],
-#         "style-src": ["'self'"],
-#         "img-src": ["'self'", "https://images.com"],
-#     }
-#     csp_generator.hashes = {
-#         "script-src": ["'sha256-abc123'"],
-#         "style-src": ["'sha256-def456'"],
-#     }
-
-#     # Force plain output for testing
-#     monkeypatch.setenv("CSP_PLAIN_OUTPUT", "1")
-
-#     # Capture output
-#     output_buffer = StringIO()
-#     with redirect_stdout(output_buffer):
-#         result = csp_generator.validate_csp(str(csp_file), str(tmp_path))
-
-#     output = output_buffer.getvalue()
-#     print("Captured console output for validate_csp_mismatch:")
-#     print(output)
-#     print("Captured console output (escaped):")
-#     print(repr(output))
-
-#     assert result is False
-#     assert "CSP header mismatch!" in output
-#     # assert "Expected: default-src 'self'; script-src 'self' https://example.com 'sha256-abc123'; style-src 'self' 'sha256-def456'; img-src 'self' https://images.com" in output
-#     # assert "Found: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'" in output
-#     assert "Directive: script-src" in output
-#     assert "Missing in Existing: 'sha256-abc123', https://example.com" in output
-#     assert "Extra in Existing: -" in output
-#     assert "Directive: style-src" in output
-#     assert "Missing in Existing: 'sha256-def456'" in output
-#     assert "Extra in Existing: 'unsafe-inline'" in output
-#     assert "Directive: img-src" in output
-#     assert "Missing in Existing: 'self', https://images.com" in output
-#     assert "Directives missing in existing CSP: img-src" in output
+def test_validate_csp_invalid_file(csp_generator, tmp_path, monkeypatch):
+    csp_file = tmp_path / "csp.conf"
+    csp_file.write_text("valid content")
+    def mock_open(*args, **kwargs):
+        raise IOError("Permission denied")
+    monkeypatch.setattr("builtins.open", mock_open)
+    result = csp_generator.validate_csp(str(csp_file), str(tmp_path))
+    assert result is False
