@@ -1,11 +1,18 @@
-import logging
+"""Local HTML file scanning module for HashCSP.
+
+This module provides functionality for scanning local HTML files to extract
+inline scripts, styles, and external resources for CSP generation.
+"""
+
 import os
+from typing import Dict, List
 
 from bs4 import BeautifulSoup, Tag
 
 from .csp_generator import CSPGenerator
+from .logging_config import ErrorCodes, get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class LocalScanner:
@@ -50,6 +57,10 @@ class LocalScanner:
             TypeError: If BeautifulSoup returns non-Tag elements.
         """
         try:
+            logger.info("Starting file scan",
+                       file_path=file_path,
+                       operation="scan_html_file")
+
             with open(file_path, "r", encoding="utf-8") as f:
                 soup = BeautifulSoup(f, "html.parser")
 
@@ -57,6 +68,12 @@ class LocalScanner:
             inline_scripts = soup.find_all("script", src=False)
             for script in inline_scripts:
                 if not isinstance(script, Tag):
+                    logger.error("Invalid script element type",
+                               file_path=file_path,
+                               expected_type="Tag",
+                               actual_type=type(script),
+                               operation="scan_html_file",
+                               error_code=ErrorCodes.VALIDATION_ERROR)
                     raise TypeError(f"Expected Tag, got {type(script)}")
                 content = script.string
                 if content and content.strip():
@@ -64,12 +81,21 @@ class LocalScanner:
                     if hash_value and hash_value not in self.csp.hashes["script-src"]:
                         self.csp.hashes["script-src"].append(hash_value)
                         self.csp.stats["unique_script_hashes"] += 1
-                        logger.info(f"Added script hash {hash_value} from {file_path}")
+                        logger.debug("Added script hash",
+                                   file_path=file_path,
+                                   hash=hash_value,
+                                   operation="scan_html_file")
 
             # Process inline styles
             inline_styles = soup.find_all("style")
             for style in inline_styles:
                 if not isinstance(style, Tag):
+                    logger.error("Invalid style element type",
+                               file_path=file_path,
+                               expected_type="Tag",
+                               actual_type=type(style),
+                               operation="scan_html_file",
+                               error_code=ErrorCodes.VALIDATION_ERROR)
                     raise TypeError(f"Expected Tag, got {type(style)}")
                 content = style.string
                 if content and content.strip():
@@ -77,12 +103,21 @@ class LocalScanner:
                     if hash_value and hash_value not in self.csp.hashes["style-src"]:
                         self.csp.hashes["style-src"].append(hash_value)
                         self.csp.stats["unique_style_hashes"] += 1
-                        logger.info(f"Added style hash {hash_value} from {file_path}")
+                        logger.debug("Added style hash",
+                                   file_path=file_path,
+                                   hash=hash_value,
+                                   operation="scan_html_file")
 
             # Process external scripts
             external_scripts = soup.find_all("script", src=True)
             for script in external_scripts:
                 if not isinstance(script, Tag):
+                    logger.error("Invalid script element type",
+                               file_path=file_path,
+                               expected_type="Tag",
+                               actual_type=type(script),
+                               operation="scan_html_file",
+                               error_code=ErrorCodes.VALIDATION_ERROR)
                     raise TypeError(f"Expected Tag, got {type(script)}")
                 src = script.get("src")
                 if (
@@ -92,11 +127,21 @@ class LocalScanner:
                 ):
                     self.csp.directives["script-src"].append(src)
                     self.csp.stats["external_scripts"] += 1
+                    logger.debug("Added external script source",
+                               file_path=file_path,
+                               src=src,
+                               operation="scan_html_file")
 
             # Process external styles
             external_styles = soup.find_all("link", rel="stylesheet")
             for style in external_styles:
                 if not isinstance(style, Tag):
+                    logger.error("Invalid style element type",
+                               file_path=file_path,
+                               expected_type="Tag",
+                               actual_type=type(style),
+                               operation="scan_html_file",
+                               error_code=ErrorCodes.VALIDATION_ERROR)
                     raise TypeError(f"Expected Tag, got {type(style)}")
                 href = style.get("href")
                 if (
@@ -106,11 +151,21 @@ class LocalScanner:
                 ):
                     self.csp.directives["style-src"].append(href)
                     self.csp.stats["external_styles"] += 1
+                    logger.debug("Added external style source",
+                               file_path=file_path,
+                               href=href,
+                               operation="scan_html_file")
 
             # Process images
             images = soup.find_all("img", src=True)
             for img in images:
                 if not isinstance(img, Tag):
+                    logger.error("Invalid image element type",
+                               file_path=file_path,
+                               expected_type="Tag",
+                               actual_type=type(img),
+                               operation="scan_html_file",
+                               error_code=ErrorCodes.VALIDATION_ERROR)
                     raise TypeError(f"Expected Tag, got {type(img)}")
                 src = img.get("src")
                 if (
@@ -120,21 +175,38 @@ class LocalScanner:
                 ):
                     self.csp.directives["img-src"].append(src)
                     self.csp.stats["external_images"] += 1
+                    logger.debug("Added image source",
+                               file_path=file_path,
+                               src=src,
+                               operation="scan_html_file")
 
             # Check for no inline content
             if not inline_scripts and not inline_styles:
                 self.csp.stats["files_with_no_inline_scripts"] += 1
-                logger.info(f"No inline scripts or styles in {file_path}")
+                logger.info("No inline scripts or styles found",
+                          file_path=file_path,
+                          operation="scan_html_file")
 
             self.csp.stats["files_processed"] += 1
-            logger.info(f"Processed file: {file_path}")
+            logger.info("File scan completed",
+                       file_path=file_path,
+                       operation="scan_html_file")
             return True
 
         except UnicodeDecodeError:
-            logger.error(f"File {file_path} has invalid encoding", exc_info=True)
+            logger.error("Invalid file encoding",
+                        file_path=file_path,
+                        operation="scan_html_file",
+                        error_code=ErrorCodes.INVALID_ENCODING,
+                        exc_info=True)
             return False
         except Exception as e:
-            logger.error(f"Error processing file {file_path}: {e}", exc_info=True)
+            logger.error("Error processing file",
+                        file_path=file_path,
+                        error=str(e),
+                        operation="scan_html_file",
+                        error_code=ErrorCodes.FILE_PROCESSING_ERROR,
+                        exc_info=True)
             return False
 
     def scan_directory(self, directory: str) -> None:
@@ -146,9 +218,18 @@ class LocalScanner:
         Args:
             directory (str): Path to the directory to scan.
         """
+        logger.info("Starting directory scan",
+                   directory=directory,
+                   operation="scan_directory")
+
         html_extensions = (".html", ".htm")
         for root, _, files in os.walk(directory):
             for file in files:
                 if file.lower().endswith(html_extensions):
                     file_path = os.path.join(root, file)
                     self.scan_html_file(file_path)
+
+        logger.info("Directory scan completed",
+                   directory=directory,
+                   files_processed=self.csp.stats["files_processed"],
+                   operation="scan_directory")

@@ -29,6 +29,85 @@ metrics to help you fine-tune your CSP policies.
 - **Type Safety**: Fully type-checked codebase using `mypy` for reliability.
 - **Modular Design**: Separated concerns with a dedicated `Printer` class for
   output formatting.
+- **Structured Logging**: JSON-based logging system with rich contextual metadata,
+  perfect for debugging and monitoring in production environments.
+
+## Configuration
+
+### Logging Configuration
+
+HashCSP uses a comprehensive logging system that supports both development and production environments. The logging system can be configured through environment variables:
+
+- `LOG_LEVEL`: Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL). Default: INFO
+- `LOG_FORMAT`: Choose the output format (json, console). Default: console
+- `LOG_FILE`: Specify the log file path. Default: hashcsp/logs/hashcsp.log
+- `LOG_MAX_BYTES`: Set maximum log file size in bytes. Default: 10MB
+- `LOG_BACKUP_COUNT`: Number of backup files to keep. Default: 5
+
+#### JSON Log Format
+
+In production environments, logs are written in JSON format for easy parsing and integration with log aggregation tools. Example log entry:
+
+```json
+{
+    "timestamp": "2025-04-30T12:00:00Z",
+    "level": "ERROR",
+    "message": "Invalid JSON in config.json",
+    "module": "config",
+    "file_path": "config.json",
+    "function": "load_config",
+    "line_number": 43,
+    "error_code": "INVALID_JSON",
+    "request_id": "abc123",
+    "operation": "load_config"
+}
+```
+
+#### Development Mode
+
+In development, logs are displayed with rich formatting in the console for better readability:
+
+```bash
+export LOG_FORMAT=console
+export LOG_LEVEL=DEBUG
+hashcsp generate -p ./public
+```
+
+#### Production Mode
+
+For production environments, enable JSON logging for better integration with log aggregation tools:
+
+```bash
+export LOG_FORMAT=json
+export LOG_LEVEL=INFO
+hashcsp generate -p ./public
+```
+
+#### Log Analysis
+
+The JSON log format makes it easy to analyze logs using standard tools:
+
+```bash
+# Find all ERROR logs
+jq 'select(.level=="ERROR")' hashcsp/logs/hashcsp.log
+
+# Count occurrences of each error code
+jq 'select(.error_code != null) | .error_code' hashcsp/logs/hashcsp.log | sort | uniq -c
+
+# Track operations by request_id
+jq 'select(.request_id=="abc123")' hashcsp/logs/hashcsp.log
+```
+
+#### Security Events
+
+The logging system is designed to track security-relevant events:
+
+- Unsafe CSP directives (e.g., 'unsafe-inline')
+- File access failures
+- Configuration validation errors
+- Network request failures
+
+Sensitive data (like API keys) is automatically filtered from logs.
 
 ## Installation
 
@@ -47,7 +126,7 @@ manager for Python. It simplifies:
 - Building and publishing Python packages (like `hashcsp`)
 - Managing tool versioning via `pyproject.toml`
 
-It’s a cleaner alternative to using `pip` and `requirements.txt`.
+It's a cleaner alternative to using `pip` and `requirements.txt`.
 
 ##### How to Install Poetry
 
@@ -148,7 +227,7 @@ hashcsp validate -p ./public -f csp.conf
   - `-p/--path`: Directory containing HTML files (required).
   - `-f/--file`: File containing the existing CSP header (required).
 
-**Example Output**: If there’s a mismatch, HashCSP will display a detailed
+**Example Output**: If there's a mismatch, HashCSP will display a detailed
 report with:
 
 - A "CSP Mismatch Details" table (limited to 10 differences for large policies).
@@ -206,7 +285,7 @@ Computed CSP header written to csp.conf
 
 ## Contributing
 
-I welcome contributions to HashCSP, Here’s how to get started:
+I welcome contributions to HashCSP, Here's how to get started:
 
 1. **Fork the Repository**: Fork the project on GitHub and clone your fork:
 

@@ -1,12 +1,19 @@
+"""Configuration model for Content Security Policy directives.
+
+This module provides configuration loading, validation, and saving functionality
+for CSP directives. It uses structured logging for better debugging and auditing.
+"""
+
 import json
-import logging
 import os
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ValidationError
 from rich.console import Console
 
-logger = logging.getLogger(__name__)
+from .logging_config import ErrorCodes, get_logger
+
+logger = get_logger(__name__)
 console = Console()
 
 
@@ -54,26 +61,44 @@ def load_config(config_path: Optional[str] = None) -> Optional[CSPConfig]:
     path = config_path or default_path
 
     if not os.path.exists(path):
-        logger.info(f"No config file found at {path}. Using default directives.")
+        logger.info("No config file found", file_path=path, operation="load_config")
         return None
 
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         config = CSPConfig(**data)
-        logger.info(f"Loaded config from {path}")
+        logger.info("Loaded config successfully", 
+                   file_path=path, 
+                   operation="load_config",
+                   directive_count=len(config.directives))
         return config
     except json.JSONDecodeError as e:
+        logger.error("Invalid JSON in config file",
+                    file_path=path,
+                    operation="load_config",
+                    error_code=ErrorCodes.INVALID_JSON,
+                    error=str(e),
+                    exc_info=True)
         console.print(f"[red]Error: Invalid JSON in {path}: {e}[/red]")
-        logger.error(f"Invalid JSON in {path}: {e}")
         return None
     except ValidationError as e:
+        logger.error("Invalid CSP config format",
+                    file_path=path,
+                    operation="load_config",
+                    error_code=ErrorCodes.VALIDATION_ERROR,
+                    error=str(e),
+                    exc_info=True)
         console.print(f"[red]Error: Invalid CSP config in {path}: {e}[/red]")
-        logger.error(f"Invalid CSP config in {path}: {e}")
         return None
     except Exception as e:
+        logger.error("Unexpected error loading config",
+                    file_path=path,
+                    operation="load_config",
+                    error_code=ErrorCodes.PERMISSION_DENIED,
+                    error=str(e),
+                    exc_info=True)
         console.print(f"[red]Error loading config from {path}: {e}[/red]")
-        logger.error(f"Error loading config from {path}: {e}")
         return None
 
 
@@ -94,27 +119,48 @@ def validate_json_config(file_path: str) -> Optional[CSPConfig]:
         JSONDecodeError: If the file contains invalid JSON.
     """
     if not os.path.isfile(file_path):
+        logger.error("Config file not found",
+                    file_path=file_path,
+                    operation="validate_json_config",
+                    error_code=ErrorCodes.FILE_NOT_FOUND)
         console.print(f"[red]Error: File {file_path} not found[/red]")
-        logger.error(f"File {file_path} not found")
         return None
 
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         config = CSPConfig(**data)
-        logger.info(f"Validated JSON config from {file_path}")
+        logger.info("Validated JSON config successfully",
+                   file_path=file_path,
+                   operation="validate_json_config",
+                   directive_count=len(config.directives))
         return config
     except json.JSONDecodeError as e:
+        logger.error("Invalid JSON in config file",
+                    file_path=file_path,
+                    operation="validate_json_config",
+                    error_code=ErrorCodes.INVALID_JSON,
+                    error=str(e),
+                    exc_info=True)
         console.print(f"[red]Error: Invalid JSON in {file_path}: {e}[/red]")
-        logger.error(f"Invalid JSON in {file_path}: {e}")
         return None
     except ValidationError as e:
+        logger.error("Invalid CSP config format",
+                    file_path=file_path,
+                    operation="validate_json_config",
+                    error_code=ErrorCodes.VALIDATION_ERROR,
+                    error=str(e),
+                    exc_info=True)
         console.print(f"[red]Error: Invalid CSP config in {file_path}: {e}[/red]")
-        logger.error(f"Invalid CSP config in {file_path}: {e}")
         return None
     except Exception as e:
+        logger.error("Error reading config file",
+                    file_path=file_path,
+                    operation="validate_json_config",
+                    error_code=ErrorCodes.PERMISSION_DENIED,
+                    error=str(e),
+                    exc_info=True)
         console.print(f"[red]Error reading {file_path}: {e}[/red]")
-        logger.error(f"Error reading {file_path}: {e}")
         return None
 
 
@@ -137,16 +183,28 @@ def save_config(
     try:
         config_json = json.dumps(config.model_dump(), indent=2)
         if dry_run:
+            logger.info("Dry-run: Config preview",
+                       file_path=path,
+                       operation="save_config",
+                       directive_count=len(config.directives))
             console.print("[cyan]Dry-run: Config JSON to be saved:[/cyan]")
             console.print(config_json)
-            logger.info(f"Dry-run: Config JSON previewed for {path}")
             return True
+
         with open(path, "w", encoding="utf-8") as f:
             f.write(config_json)
+        logger.info("Config saved successfully",
+                   file_path=path,
+                   operation="save_config",
+                   directive_count=len(config.directives))
         console.print(f"[green]Config saved to {path}[/green]")
-        logger.info(f"Config saved to {path}")
         return True
     except Exception as e:
+        logger.error("Error saving config",
+                    file_path=path,
+                    operation="save_config",
+                    error_code=ErrorCodes.PERMISSION_DENIED,
+                    error=str(e),
+                    exc_info=True)
         console.print(f"[red]Error saving config to {path}: {e}[/red]")
-        logger.error(f"Error saving config to {path}: {e}")
         return False

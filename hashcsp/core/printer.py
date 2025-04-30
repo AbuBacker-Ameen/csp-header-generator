@@ -1,3 +1,9 @@
+"""Output formatting module for HashCSP.
+
+This module handles the formatted output of CSP generation reports and comparisons
+using rich text formatting. It supports both rich text and plain text output modes.
+"""
+
 import os
 from typing import Dict, List
 
@@ -6,6 +12,9 @@ from rich.align import Align
 from rich.console import Console
 from rich.table import Table
 
+from .logging_config import get_logger
+
+logger = get_logger(__name__)
 console = Console()
 
 
@@ -43,6 +52,12 @@ class Printer:
         - If set to "1": Plain text output
         - Otherwise: Rich text table with formatting
         """
+        logger.info("Generating summary report",
+                   files_processed=self.stats["files_processed"],
+                   unique_script_hashes=self.stats["unique_script_hashes"],
+                   unique_style_hashes=self.stats["unique_style_hashes"],
+                   operation="print_summary_report")
+
         if os.environ.get("CSP_PLAIN_OUTPUT") == "1":
             print("CSP Generation Report :dart:")
             print(f"Files Processed :page_facing_up: : {self.stats['files_processed']}")
@@ -120,6 +135,11 @@ class Printer:
         - If set to "1": Plain text output
         - Otherwise: Rich text tables with formatting
         """
+        logger.info("Comparing CSP configurations",
+                   existing_directives=len(existing),
+                   generated_directives=len(generated),
+                   operation="print_csp_diff")
+
         if os.environ.get("CSP_PLAIN_OUTPUT") == "1":
             print("CSP Mismatch Details :warning:")
             all_directives = set(existing.keys()) | set(generated.keys())
@@ -164,6 +184,7 @@ class Printer:
                                 metrics[directive]["extra_hashes"] += 1
                             else:
                                 metrics[directive]["extra_links"] += 1
+
             for diff in differences[:10]:
                 directive, missing_str, extra_str = diff
                 print(f"Directive: {directive}")
@@ -171,6 +192,7 @@ class Printer:
                 print(f"Extra in Existing: {extra_str}")
             if len(differences) > 10:
                 print(f"... and {len(differences) - 10} more differences not shown.")
+
             missing_directives = set(generated.keys()) - set(existing.keys())
             extra_directives = set(existing.keys()) - set(generated.keys())
             if missing_directives:
@@ -181,6 +203,7 @@ class Printer:
                 print(
                     f"Extra directives in existing CSP: {', '.join(sorted(extra_directives))} :warning:"
                 )
+
             # Print metrics
             print("\nMismatch Metrics:")
             for directive, counts in metrics.items():
@@ -268,8 +291,8 @@ class Printer:
                 console.print(
                     "[yellow]No specific differences found in directives, but CSP strings differ.[/yellow]"
                 )
-            # else:
-            #     console.print(Align.center(table))
+            else:
+                console.print(Align.center(table))
 
             missing_directives = set(generated.keys()) - set(existing.keys())
             extra_directives = set(existing.keys()) - set(generated.keys())
@@ -327,3 +350,9 @@ class Printer:
             if has_metrics:
                 console.print("\n")
                 console.print(Align.center(metrics_table))
+
+            logger.info("CSP comparison completed",
+                       differences_count=len(differences),
+                       missing_directives=len(missing_directives),
+                       extra_directives=len(extra_directives),
+                       operation="print_csp_diff")

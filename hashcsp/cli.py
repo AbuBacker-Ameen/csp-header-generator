@@ -8,7 +8,6 @@ The CLI is built using Typer and provides rich text output formatting.
 """
 
 import datetime
-import logging
 from importlib.metadata import PackageNotFoundError, version
 
 import typer
@@ -18,6 +17,7 @@ from . import __logfile__
 from .commands import fetch, generate, validate
 from .core.config import load_config
 from .core.init import CSPInitializer
+from .core.logging_config import get_logger
 
 app = typer.Typer(
     name="hashcsp",
@@ -28,23 +28,13 @@ app = typer.Typer(
 )
 
 console = Console()
+logger = get_logger(__name__)
 
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(__logfile__, encoding="utf-8"),
-    ],
-)
-logger = logging.getLogger(__name__)
+# Log startup information
 SEP = "\n" + "=" * 80 + "\n"
-logger.info(
-    "%sRun started at %s%s",
-    SEP,
-    datetime.datetime.now().isoformat(timespec="seconds"),
-    SEP,
-)
+logger.info("HashCSP CLI started",
+           timestamp=datetime.datetime.now().isoformat(timespec="seconds"),
+           operation="cli_startup")
 
 # Register commands
 app.add_typer(generate.app, name="generate")
@@ -64,8 +54,13 @@ def _version_callback(value: bool):
     if value:
         try:
             current_version = version("hashcsp")
+            logger.info("Version information requested",
+                       version=current_version,
+                       operation="version_check")
             console.print(f"[cyan bold]hashcsp v{current_version}[/cyan bold]")
         except PackageNotFoundError:
+            logger.error("Version information not available",
+                        operation="version_check")
             console.print("[red]Version info not available[/red]")
         raise typer.Exit()
 
@@ -86,8 +81,15 @@ def _init_callback(value: bool, ctx: typer.Context):
         initializer = CSPInitializer()
         config_path = ctx.params.get("config") or "hashcsp.json"
         dry_run = ctx.params.get("dry_run", False)
+        logger.info("Starting configuration initialization",
+                   config_path=config_path,
+                   dry_run=dry_run,
+                   operation="init_config")
         success = initializer.run(config_path, dry_run=dry_run)
         if not success:
+            logger.error("Configuration initialization failed",
+                        config_path=config_path,
+                        operation="init_config")
             raise typer.Exit(code=1)
         raise typer.Exit()
 
@@ -137,7 +139,10 @@ def main(
     """
     # Initialize context object with config and dry-run
     ctx.obj = {"config": load_config(config), "dry_run": dry_run}
-    logger.info(f"Context initialized with config: {config}, dry_run: {dry_run}")
+    logger.info("CLI context initialized",
+               config_path=config,
+               dry_run=dry_run,
+               operation="cli_init")
 
 
 if __name__ == "__main__":
