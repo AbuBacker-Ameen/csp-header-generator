@@ -196,17 +196,18 @@ def test_logging_output_format(valid_config: LoggingConfig, temp_log_dir: Path):
     logger = structlog.get_logger("test")
     
     test_message = "Test log message"
-    logger.info(test_message, test_key="test_value")
+    logger.info(test_message, custom_param="test_value")
 
-    # Read the log file
+    # Read the log file and get the last line (skipping initialization message)
     with open(valid_config.file) as f:
-        log_line = f.readline()
+        log_lines = f.readlines()
+        log_line = log_lines[-1]  # Get the last line which should be our test message
     
     # Parse JSON and verify structure
     log_entry = json.loads(log_line)
     assert log_entry["event"] == test_message
     assert log_entry["level"] == "info"
-    assert log_entry["test_key"] == "test_value"
+    assert log_entry["custom_param"] == "test_value"
     assert "timestamp" in log_entry
 
 
@@ -237,12 +238,13 @@ def test_error_logging(valid_config: LoggingConfig, temp_log_dir: Path):
     except ValueError:
         logger.error("Error occurred", exc_info=True)
 
-    # Read the log file
+    # Read the log file and get the last line (skipping initialization message)
     with open(valid_config.file) as f:
-        log_line = f.readline()
+        log_lines = f.readlines()
+        log_line = log_lines[-1]  # Get the last line which should be our error message
     
     # Verify error details
     log_entry = json.loads(log_line)
     assert log_entry["level"] == "error"
-    assert "exc_info" in log_entry
-    assert "ValueError: Test error" in log_entry["exc_info"] 
+    assert "exception" in log_entry
+    assert "ValueError: Test error" in log_entry["exception"] 
