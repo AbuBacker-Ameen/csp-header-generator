@@ -39,18 +39,9 @@ console = Console()
 # Get list of available timezones for autocompletion
 AVAILABLE_TIMEZONES = sorted(zoneinfo.available_timezones())
 
-# Initialize logging with file-only by default and system timezone
-initial_config = LoggingConfig(console_level=None)
-setup_logging(initial_config)
 logger = get_logger(__name__)
 
-# Log startup information
-SEP = "\n" + "=" * 80 + "\n"
-logger.info(
-    "HashCSP CLI started",
-    timestamp=datetime.datetime.now().isoformat(timespec="seconds"),
-    operation="cli_startup",
-)
+logger.info("HashCSP CLI started", operation="cli_startup")
 
 # Register commands
 app.add_typer(generate.app, name="generate")
@@ -125,7 +116,11 @@ def _list_timezones_callback(value: bool):
         typer.Exit: Always exits after displaying timezone information.
     """
     if value:
-        console.print("\n[bold cyan]Available Timezones:[/bold cyan]")
+        from rich import box
+        from rich.box import ROUNDED
+        from rich.panel import Panel
+        from rich.table import Table
+
         # Group timezones by region for better readability
         regions: Dict[str, List[str]] = {}
         for tz in AVAILABLE_TIMEZONES:
@@ -134,16 +129,64 @@ def _list_timezones_callback(value: bool):
                 regions[region] = []
             regions[region].append(tz)
 
+        # Create header
+        header = Panel(
+            "[bold cyan]HashCSP Timezone Explorer[/bold cyan]",
+            subtitle="All available IANA timezones",
+            border_style="cyan",
+        )
+        console.print(header)
+
+        # Get console width to adapt display
+        console_width = console.width or 80
+        compact_mode = console_width < 100
+
+        # Process each region
         for region in sorted(regions):
-            console.print(f"\n[bold yellow]{region}[/bold yellow]")
+            # Create a table for each region with appropriate sizing
+            table = Table(
+                box=box.SIMPLE if compact_mode else ROUNDED,
+                expand=False,
+                show_header=True,
+                header_style="bold yellow",
+                title=f"[bold yellow]{region}[/bold yellow]",
+                title_style="yellow",
+                min_width=40,
+                padding=(0, 1) if compact_mode else (0, 2),
+            )
+
+            # Adjust columns based on available space
+            if compact_mode:
+                table.add_column("Timezone", no_wrap=True, overflow="ellipsis")
+                table.add_column("Time", justify="right", width=8)
+            else:
+                table.add_column("Timezone", no_wrap=False)
+                table.add_column("Current Time", justify="right")
+
+            # Add timezone data
             for tz in sorted(regions[region]):
                 try:
                     current_time = datetime.datetime.now(zoneinfo.ZoneInfo(tz))
-                    console.print(
-                        f"  {tz:<35} (Current time: {current_time.strftime('%H:%M')})"
-                    )
+                    time_format = "%H:%M" if compact_mode else "%H:%M:%S"
+                    time_str = f"[green]{current_time.strftime(time_format)}[/green]"
                 except Exception:
-                    console.print(f"  {tz}")
+                    time_str = "[dim]N/A[/dim]"
+
+                # Truncate timezone name if needed in compact mode
+                display_tz = tz
+                if compact_mode and len(tz) > 30:
+                    display_tz = tz[:27] + "..."
+
+                table.add_row(display_tz, time_str)
+
+            # Print the table directly instead of using panels
+            console.print(table)
+
+            # Add a small separator between regions
+            if region != sorted(regions)[-1]:
+                console.print("")
+
+        console.print("\n[dim]Use --timezone TIMEZONE to set a specific timezone[/dim]")
         raise typer.Exit()
 
 
@@ -183,6 +226,14 @@ def timezone_callback(value: str) -> str:
 @app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
+    tz: str = typer.Option(
+        get_default_timezone(),  # Use system timezone as default
+        "--timezone",
+        "-t",
+        help="Set the timezone for log timestamps (e.g., 'Asia/Dubai', 'Europe/London'). Defaults to system timezone.",
+        callback=timezone_callback,
+        autocompletion=lambda: AVAILABLE_TIMEZONES,
+    ),
     version: bool = typer.Option(
         None,
         "--version",
@@ -222,14 +273,6 @@ def main(
         count=True,
         help="Enable verbose output. Use -v for INFO, -vv for DEBUG.",
     ),
-    timezone: str = typer.Option(
-        get_default_timezone(),  # Use system timezone as default
-        "--timezone",
-        "-t",
-        help="Set the timezone for log timestamps (e.g., 'Asia/Dubai', 'Europe/London'). Defaults to system timezone.",
-        callback=timezone_callback,
-        autocompletion=lambda: AVAILABLE_TIMEZONES,
-    ),
 ):
     """HashCSP - Generate secure Content Security Policies.
 
@@ -263,7 +306,7 @@ def main(
     ctx.ensure_object(dict)
 
     # Create logging config
-    logging_config = LoggingConfig(console_level=console_level, timezone=timezone)
+    logging_config = LoggingConfig(console_level=console_level, timezone=tz)
 
     # Store logging config in context first (needed for timestamp processor)
     ctx.obj["logging_config"] = logging_config
@@ -279,13 +322,13 @@ def main(
             "dry_run": dry_run,
         }
     )
-
+    logger = get_logger(__name__)
     logger.info(
         "CLI context initialized",
         config_path=config,
         dry_run=dry_run,
         verbose_level=verbose,
-        timezone=timezone,
+        timezone=tz,
         operation="cli_init",
     )
 

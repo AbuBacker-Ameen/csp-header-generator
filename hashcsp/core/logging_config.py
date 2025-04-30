@@ -100,8 +100,8 @@ class TimestampProcessor:
         """
         global _CONTEXT
 
-        # Get timezone from context if available, fallback to UTC
-        tz_name = "UTC"
+        # Get timezone from context if available, fallback to get_default_timezone()
+        tz_name = get_default_timezone()
         if _CONTEXT and hasattr(_CONTEXT, "obj"):
             if "logging_config" in _CONTEXT.obj:
                 tz_name = _CONTEXT.obj["logging_config"].timezone
