@@ -36,6 +36,7 @@ pytest-trio = "^0.8.0"
 pytest-twisted = "^1.14.3"
 twisted = "^24.11.0"
 bandit = "^1.8.3"
+sphinx = "^8.2.3"
 
 [tool.black]
 line-length = 88
