@@ -32,11 +32,15 @@ class CSPConfig(BaseModel):
         "default-src": ["'self'"],
         "script-src": ["'self'"],
         "style-src": ["'self'"],
+        "style-src-attr": [],
         "img-src": ["'self'"],
-        "connect-src": ["'self'"],
         "font-src": ["'self'"],
         "media-src": ["'self'"],
+        "connect-src": ["'self'"],
+        "object-src": ["'none'"],
         "frame-src": ["'self'"],
+        "worker-src": ["'self'"],
+        "manifest-src": ["'self'"],
     }
 
 

@@ -1,9 +1,9 @@
 # HashCSP
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://github.com/AbuBacker-Ameen/HashCSP/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](https://github.com/Ameen-AB/HashCSP/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/downloads/release/python-3120/)
 [![Typer](https://img.shields.io/badge/Made%20with-Typer-04AA6D?logo=python)](https://typer.tiangolo.com/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)](https://github.com/AbuBacker-Ameen/HashCSP/blob/main/Dockerfile)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=fff)](https://github.com/Ameen-AB/HashCSP/blob/main/Dockerfile)
 [![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
 
 HashCSP is a powerful Python tool designed to generate and validate Content Security Policy (CSP) headers for web applications. It helps developers secure their websites by creating comprehensive CSP headers that mitigate risks like Cross-Site Scripting (XSS) by specifying trusted sources for scripts, styles, and other resources.
@@ -54,7 +54,7 @@ HashCSP is a powerful Python tool designed to generate and validate Content Secu
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/AbuBacker-Ameen/HashCSP.git
+   git clone https://github.com/Ameen-AB/HashCSP.git
    cd HashCSP
    ```
 

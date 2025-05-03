@@ -15,6 +15,7 @@ Key Features
 * **Validate CSP Headers**: Compare existing CSP headers against scanned resources
 * **Remote Site Analysis**: Fetch and analyze remote websites using Playwright
 * **Dynamic Content Handling**: Capture dynamically inserted scripts and styles
+* **Dynamic DOM Monitoring**: Use MutationObserver to track late-loading scripts and styles during runtime
 * **Rich CLI Interface**: Colored output with progress indicators and detailed reporting
 
 Getting Started
@@ -40,6 +41,7 @@ Features
    features/validate
    features/remote-analysis
    features/dynamic-content
+   features/dynamic-dom-monitoring
    features/logging
 
 .. API Reference (yet to be implemented)
@@ -83,6 +85,3 @@ Indices and Tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-
-

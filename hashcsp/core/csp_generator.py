@@ -33,6 +33,7 @@ class CSPGenerator:
         self.hashes: Dict[str, List[str]] = {
             "script-src": [],
             "style-src": [],
+            "style-src-attr": [],  # Added for style attribute hashes
         }
         self.directives: Dict[str, List[str]] = {}
         self.stats: Dict[str, int] = {
@@ -43,6 +44,9 @@ class CSPGenerator:
             "external_scripts": 0,
             "external_styles": 0,
             "external_images": 0,
+            "external_fonts": 0,
+            "external_media": 0,
+            "external_connections": 0,
         }
         self.printer = Printer(self.stats)
 
@@ -56,11 +60,15 @@ class CSPGenerator:
             "default-src": ["'self'"],
             "script-src": ["'self'"],
             "style-src": ["'self'"],
+            "style-src-attr": [],  # Added for style attributes
             "img-src": ["'self'"],
-            "connect-src": ["'self'"],
             "font-src": ["'self'"],
             "media-src": ["'self'"],
+            "connect-src": ["'self'"],
+            "object-src": ["'none'"],
             "frame-src": ["'self'"],
+            "worker-src": ["'self'"],
+            "manifest-src": ["'self'"],
         }
         self.directives = default_directives
         logger.info(
@@ -87,7 +95,7 @@ class CSPGenerator:
             )
             return ""
         hash_obj = hashlib.sha256(content.encode("utf-8"))
-        hash_value = f"'sha256-{hash_obj.digest().hex()}'"
+        hash_value = f"'sha256-{hash_obj.hexdigest()}'"
         logger.debug(
             "Computed content hash",
             source=source,
@@ -139,6 +147,55 @@ class CSPGenerator:
                         error_code=ErrorCodes.UNSAFE_DIRECTIVE,
                     )
         return warnings
+
+    def add_external_resource(self, url: str, resource_type: str) -> None:
+        """Add an external resource URL to the appropriate CSP directive.
+
+        Args:
+            url (str): The resource URL.
+            resource_type (str): The resource type (e.g., script, stylesheet, font).
+        """
+        directive_map = {
+            "script": "script-src",
+            "stylesheet": "style-src",
+            "image": "img-src",
+            "font": "font-src",
+            "media": "media-src",
+            "fetch": "connect-src",
+            "websocket": "connect-src",
+        }
+        directive = directive_map.get(resource_type)
+        if not directive:
+            logger.warning(
+                "Unknown resource type",
+                resource_type=resource_type,
+                url=url,
+                operation="add_external_resource",
+                error_code=ErrorCodes.VALIDATION_ERROR.value,
+            )
+            return
+
+        if url not in self.directives.get(directive, []):
+            self.directives.setdefault(directive, []).append(url)
+            # Correct stat key for media to match expected 'external_media'
+            stat_key = (
+                "external_media"
+                if resource_type == "media"
+                else (
+                    f"external_{resource_type}s"
+                    if resource_type not in ["fetch", "websocket"]
+                    else "external_connections"
+                )
+            )
+            self.stats[stat_key] = self.stats.get(stat_key, 0) + 1
+            logger.debug(
+                f"Added external {resource_type}",
+                url=url,
+                directive=directive,
+                stat_key=stat_key,
+                operation="add_external_resource",
+                error_code=ErrorCodes.SUCCESS.value,
+            )
 
     def generate_csp(self, report: bool = True) -> str:
         """Generate the CSP header string.

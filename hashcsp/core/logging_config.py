@@ -225,6 +225,11 @@ class ErrorCodes(str, enum.Enum):
     CONNECTION_TIMEOUT = "CONNECTION_TIMEOUT"
     SSL_ERROR = "SSL_ERROR"
 
+    SUCCESS = "SUCCESS"  # Added for successful operations
+    PLAYWRIGHT_ERROR = "PLAYWRIGHT_ERROR"  # Added for Playwright-specific errors
+    HASH_COMPUTATION_ERROR = "HASH_COMPUTATION_ERROR"  # Added for hash failures
+    FILE_IO_ERROR = "FILE_IO_ERROR"  # Added for file I/O errors
+
 
 def sanitize_log_record(
     logger: Any, name: str, event_dict: MutableMapping[str, Any]

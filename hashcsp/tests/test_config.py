@@ -7,6 +7,7 @@ configurations, and saving configs to files. Includes tests for structured loggi
 import json
 import logging
 from pathlib import Path
+from typing import Any, Dict
 from unittest.mock import patch
 
 import pytest
@@ -39,11 +40,15 @@ def default_directives():
         "default-src": ["'self'"],
         "script-src": ["'self'"],
         "style-src": ["'self'"],
+        "style-src-attr": [],
         "img-src": ["'self'"],
-        "connect-src": ["'self'"],
         "font-src": ["'self'"],
         "media-src": ["'self'"],
+        "connect-src": ["'self'"],
+        "object-src": ["'none'"],
         "frame-src": ["'self'"],
+        "worker-src": ["'self'"],
+        "manifest-src": ["'self'"],
     }
 
 
@@ -53,7 +58,9 @@ def csp_config():
     return CSPConfig()
 
 
-def get_log_message(caplog, level: str, operation: str) -> dict:
+def get_log_message(
+    caplog: pytest.LogCaptureFixture, level: str, operation: str
+) -> Dict[str, Any]:
     """Helper function to find and parse a JSON log message.
 
     Args:
@@ -65,24 +72,44 @@ def get_log_message(caplog, level: str, operation: str) -> dict:
         dict: The parsed JSON log message or empty dict if not found
     """
     for record in caplog.records:
-        if record.levelname == level and hasattr(record, "operation"):
-            if record.operation == operation:
-                # Convert the log record to a dict for easier assertion
+        try:
+            # Parse record.msg as JSON or use directly if dict
+            log_data = (
+                json.loads(record.msg) if isinstance(record.msg, str) else record.msg
+            )
+            print(f"Raw log record.msg: {record.msg}")  # Debug output
+            print(f"Parsed log_data: {log_data}")  # Debug output
+            if (
+                record.levelname == level
+                and isinstance(log_data, dict)
+                and log_data.get("operation") == operation
+            ):
                 return {
                     "level": record.levelname,
-                    "message": record.message,
-                    "operation": record.operation,
-                    "file_path": getattr(record, "file_path", None),
-                    "error_code": getattr(record, "error_code", None),
-                    "error": getattr(record, "error", None),
+                    "event": log_data.get("event"),
+                    "operation": log_data.get("operation"),
+                    "file_path": log_data.get("file_path"),
+                    "error_code": log_data.get("error_code"),
+                    "error": log_data.get("error"),
+                    "directive_count": log_data.get("directive_count"),
                 }
+        except (json.JSONDecodeError, TypeError) as e:
+            print(
+                f"Failed to parse log record: {record.msg}, error: {e}"
+            )  # Debug output
+            continue
+    print(
+        f"No matching log found for level={level}, operation={operation}"
+    )  # Debug output
     return {}
 
 
 # Tests for CSPConfig
 def test_csp_config_init(csp_config, default_directives):
     """Test CSPConfig initializes with default directives."""
-    assert csp_config.directives == default_directives
+    assert (
+        csp_config.directives == default_directives
+    ), f"Expected {default_directives}, got {csp_config.directives}"
 
 
 def test_csp_config_set_directives(csp_config):
@@ -112,9 +139,13 @@ def test_load_config_valid(tmp_path: Path, valid_config_data, caplog):
 
     # Verify log message
     log = get_log_message(caplog, "INFO", "load_config")
-    assert log["message"] == "Loaded config successfully"
+    assert (
+        log["event"] == "Loaded config successfully"
+    ), f"Expected 'Loaded config successfully', got {log}"
     assert log["file_path"] == str(config_file)
-    assert "directive_count" in log
+    assert log.get("directive_count") == len(
+        valid_config_data["directives"]
+    ), f"Expected directive_count={len(valid_config_data['directives'])}, got {log.get('directive_count')}"
 
 
 def test_load_config_empty(tmp_path: Path, default_directives, caplog):
@@ -126,11 +157,13 @@ def test_load_config_empty(tmp_path: Path, default_directives, caplog):
         config = load_config(str(config_file))
 
     assert isinstance(config, CSPConfig)
-    assert config.directives == default_directives
+    assert (
+        config.directives == default_directives
+    ), f"Expected {default_directives}, got {config.directives}"
 
     # Verify log message
     log = get_log_message(caplog, "INFO", "load_config")
-    assert log["message"] == "Loaded config successfully"
+    assert log["event"] == "Loaded config successfully"
     assert log["file_path"] == str(config_file)
 
 
@@ -143,7 +176,7 @@ def test_load_config_missing_file(caplog):
 
     # Verify log message
     log = get_log_message(caplog, "INFO", "load_config")
-    assert log["message"] == "No config file found"
+    assert log["event"] == "No config file found"
     assert log["file_path"] == "nonexistent.json"
 
 
@@ -159,9 +192,9 @@ def test_load_config_invalid_json(tmp_path: Path, caplog):
 
     # Verify log message
     log = get_log_message(caplog, "ERROR", "load_config")
-    assert log["message"] == "Invalid JSON in config file"
+    assert log["event"] == "Invalid JSON in config file"
     assert log["file_path"] == str(config_file)
-    assert log["error_code"] == ErrorCodes.INVALID_JSON
+    assert log["error_code"] == ErrorCodes.INVALID_JSON.value
 
 
 def test_load_config_schema_violation(tmp_path: Path, caplog):
@@ -178,7 +211,7 @@ def test_load_config_schema_violation(tmp_path: Path, caplog):
 
     # Verify log message
     log = get_log_message(caplog, "INFO", "load_config")
-    assert log["message"] == "Loaded config successfully"
+    assert log["event"] == "Loaded config successfully"
     assert log["file_path"] == str(config_file)
 
 
@@ -196,7 +229,7 @@ def test_validate_json_config_valid(tmp_path: Path, valid_config_data, caplog):
 
     # Verify log message
     log = get_log_message(caplog, "INFO", "validate_json_config")
-    assert log["message"] == "Validated JSON config successfully"
+    assert log["event"] == "Validated JSON config successfully"
     assert log["file_path"] == str(config_file)
 
 
@@ -209,9 +242,9 @@ def test_validate_json_config_missing_file(caplog):
 
     # Verify log message
     log = get_log_message(caplog, "ERROR", "validate_json_config")
-    assert log["message"] == "Config file not found"
+    assert log["event"] == "Config file not found"
     assert log["file_path"] == "nonexistent.json"
-    assert log["error_code"] == ErrorCodes.FILE_NOT_FOUND
+    assert log["error_code"] == ErrorCodes.FILE_NOT_FOUND.value
 
 
 def test_validate_json_config_unsafe_directive(tmp_path: Path, caplog):
@@ -228,7 +261,7 @@ def test_validate_json_config_unsafe_directive(tmp_path: Path, caplog):
 
     # Verify log message
     log = get_log_message(caplog, "INFO", "validate_json_config")
-    assert log["message"] == "Validated JSON config successfully"
+    assert log["event"] == "Validated JSON config successfully"
     assert log["file_path"] == str(config_file)
 
 
@@ -246,7 +279,7 @@ def test_validate_json_config_malformed_directive(tmp_path: Path, caplog):
 
     # Verify log message
     log = get_log_message(caplog, "INFO", "validate_json_config")
-    assert log["message"] == "Validated JSON config successfully"
+    assert log["event"] == "Validated JSON config successfully"
     assert log["file_path"] == str(config_file)
 
 
@@ -262,9 +295,9 @@ def test_validate_json_config_invalid_json(tmp_path: Path, caplog):
 
     # Verify log message
     log = get_log_message(caplog, "ERROR", "validate_json_config")
-    assert log["message"] == "Invalid JSON in config file"
+    assert log["event"] == "Invalid JSON in config file"
     assert log["file_path"] == str(config_file)
-    assert log["error_code"] == ErrorCodes.INVALID_JSON
+    assert log["error_code"] == ErrorCodes.INVALID_JSON.value
 
 
 # Tests for save_config
@@ -283,7 +316,7 @@ def test_save_config_valid(tmp_path: Path, csp_config, caplog):
 
     # Verify log message
     log = get_log_message(caplog, "INFO", "save_config")
-    assert log["message"] == "Config saved successfully"
+    assert log["event"] == "Config saved successfully"
     assert log["file_path"] == str(output_file)
 
 
@@ -299,7 +332,7 @@ def test_save_config_dry_run(tmp_path: Path, csp_config, caplog):
 
     # Verify log message
     log = get_log_message(caplog, "INFO", "save_config")
-    assert log["message"] == "Dry-run: Config preview"
+    assert log["event"] == "Dry-run: Config preview"
     assert log["file_path"] == str(output_file)
 
 
@@ -314,9 +347,9 @@ def test_save_config_permission_denied(tmp_path: Path, csp_config, caplog):
 
     # Verify log message
     log = get_log_message(caplog, "ERROR", "save_config")
-    assert log["message"] == "Error saving config"
+    assert log["event"] == "Error saving config"
     assert log["file_path"] == str(output_file)
-    assert log["error_code"] == ErrorCodes.PERMISSION_DENIED
+    assert log["error_code"] == ErrorCodes.PERMISSION_DENIED.value
 
 
 def test_save_config_invalid_path(csp_config, caplog):
@@ -329,6 +362,6 @@ def test_save_config_invalid_path(csp_config, caplog):
 
     # Verify log message
     log = get_log_message(caplog, "ERROR", "save_config")
-    assert log["message"] == "Error saving config"
+    assert log["event"] == "Error saving config"
     assert log["file_path"] == output_file
-    assert log["error_code"] == ErrorCodes.PERMISSION_DENIED
+    assert log["error_code"] == ErrorCodes.PERMISSION_DENIED.value

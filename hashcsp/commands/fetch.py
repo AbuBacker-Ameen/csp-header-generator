@@ -19,6 +19,7 @@ import typer
 from rich.console import Console
 
 from ..core.csp_generator import CSPGenerator
+from ..core.logging_config import ErrorCodes, get_logger
 from ..core.remote_fetcher import RemoteFetcher
 
 app = typer.Typer(
@@ -29,7 +30,7 @@ app = typer.Typer(
 )
 
 console = Console()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @app.callback(invoke_without_command=True)
@@ -68,6 +69,11 @@ def fetch(
         "--dry-run",
         help="Preview CSP output without writing to disk.",
     ),
+    observe_dom: bool = typer.Option(
+        False,
+        "--observe-dom",
+        help="Enable MutationObserver to track dynamic scripts and styles.",
+    ),
 ):
     """Fetch a remote website and generate a CSP header based on its content.
 
@@ -81,6 +87,7 @@ def fetch(
     - Different levels of user interaction simulation
     - Comparison with existing CSP headers
     - Preview mode with dry-run option
+    - Dynamic DOM monitoring for late-loading scripts and styles
 
     Args:
         ctx (typer.Context): The Typer context object containing CLI state.
@@ -94,6 +101,8 @@ def fetch(
             - 2: Advanced (clicking, hovering)
         retries (int, optional): Number of retry attempts. Defaults to 2.
         dry_run (bool, optional): Preview mode. Defaults to False.
+        observe_dom (bool, optional): Enable MutationObserver for dynamic scripts/styles.
+            Defaults to False.
 
     Raises:
         typer.Exit: Exits with code 1 on error, 0 on success.
@@ -138,9 +147,23 @@ def fetch(
         for directive, sources in config.directives.items():
             csp.update_directive(directive, sources)
 
+    logger.info(
+        "Starting remote fetch",
+        # url=url,
+        wait_time=wait,
+        interaction_level=interaction_level,
+        retries=retries,
+        dry_run=dry_run,
+        observe_dom=observe_dom,
+        operation="fetch",
+        error_code=ErrorCodes.SUCCESS.value,
+    )
+
     loop = asyncio.get_event_loop()
     success, website_csp_header = loop.run_until_complete(
-        fetcher.fetch_remote_site(url, wait, interaction_level, retries)
+        fetcher.fetch_remote_site(
+            url, wait, interaction_level, retries, observe_dom=observe_dom
+        )
     )
 
     if not success:
@@ -149,6 +172,12 @@ def fetch(
                 console.print(f"[red]{msg}[/red]")
         else:
             console.print(f"[red]Failed to fetch {url}. No CSP header generated.[/red]")
+        logger.error(
+            "Fetch failed",
+            url=url,
+            operation="fetch",
+            error_code=ErrorCodes.NETWORK_ERROR.value,
+        )
         raise typer.Exit(code=1)
 
     console.print("\n=== Website's CSP Header ===")
@@ -172,12 +201,28 @@ def fetch(
     if dry_run:
         console.print("[cyan]Dry-run: CSP header output:[/cyan]")
         console.print(computed_csp_header)
-        logger.info(f"Dry-run: CSP header previewed for {output}")
+        logger.info(
+            f"Dry-run: CSP header previewed for {output}",
+            operation="fetch",
+            error_code=ErrorCodes.SUCCESS.value,
+        )
     else:
         try:
             with open(output, "w") as f:
                 f.write(computed_csp_header)
             console.print(f"\nComputed CSP header written to {output}")
+            logger.info(
+                f"CSP header written to {output}",
+                operation="fetch",
+                error_code=ErrorCodes.SUCCESS.value,
+            )
         except Exception as e:
             console.print(f"[red]Error writing CSP header to {output}: {e}[/red]")
+            logger.error(
+                f"Failed to write CSP header to {output}",
+                error=str(e),
+                operation="fetch",
+                error_code=ErrorCodes.FILE_IO_ERROR.value,
+                exc_info=True,
+            )
             raise typer.Exit(code=1)

@@ -47,7 +47,7 @@ def test_logging_config_defaults():
     assert config.format == "console"
     assert config.max_bytes == 10 * 1024 * 1024
     assert config.backup_count == 5
-    assert "hashcsp.log" in config.file
+    assert "hashcsp_log.json" in config.file
 
 
 def test_logging_config_validation():
@@ -102,7 +102,7 @@ def test_setup_logging_creates_handlers(valid_config: LoggingConfig):
 
 def test_setup_logging_console_format(valid_config: LoggingConfig):
     """Test console format creates both handlers."""
-    valid_config.format = "console"
+    valid_config.console_level = "INFO"
     setup_logging(valid_config)
     root_logger = logging.getLogger()
 
