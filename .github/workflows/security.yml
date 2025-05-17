@@ -18,7 +18,7 @@ jobs:
           python-version: '3.12'
       - uses: abatilo/actions-poetry@v3
       - name: Install (runtime only)
-        run: poetry install --only main
+        run: poetry install --with dev --only main
       - name: Run Bandit
         run: |
           poetry run bandit -r hashcsp -o bandit.txt -f txt

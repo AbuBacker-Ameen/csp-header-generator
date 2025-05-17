@@ -73,7 +73,7 @@ def test_scan_html_file_empty(scanner, tmp_path, csp_generator):
 def test_scan_html_file_invalid_encoding(scanner, tmp_path, csp_generator):
     """Test scanning a file with invalid encoding."""
     invalid_file = tmp_path / "invalid.html"
-    invalid_file.write_bytes(b"\xFF\xFE<html></html>")  # Invalid UTF-8
+    invalid_file.write_bytes(b"\xff\xfe<html></html>")  # Invalid UTF-8
     success = scanner.scan_html_file(str(invalid_file))
     assert success is False
     assert csp_generator.stats["files_processed"] == 0  # Not incremented on failure

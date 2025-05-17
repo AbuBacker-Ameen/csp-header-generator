@@ -6,6 +6,8 @@ and error handling in the logging system.
 
 import json
 import logging
+import logging.handlers
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -74,7 +76,7 @@ def test_logging_config_from_env(monkeypatch: pytest.MonkeyPatch):
     env_vars = {
         "LOG_LEVEL": "DEBUG",
         "LOG_FORMAT": "json",
-        "LOG_FILE": "/tmp/test.log",
+        "LOG_FILE": str(tempfile.NamedTemporaryFile(delete=False).name),
         "LOG_MAX_BYTES": "2048",
         "LOG_BACKUP_COUNT": "3",
     }
@@ -84,7 +86,7 @@ def test_logging_config_from_env(monkeypatch: pytest.MonkeyPatch):
     config = LoggingConfig.from_env()
     assert config.level == "DEBUG"
     assert config.format == "json"
-    assert config.file == "/tmp/test.log"
+    assert config.file == env_vars["LOG_FILE"]
     assert config.max_bytes == 2048
     assert config.backup_count == 3
 
