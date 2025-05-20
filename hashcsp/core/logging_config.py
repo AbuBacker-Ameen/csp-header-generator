@@ -80,7 +80,8 @@ def get_default_timezone() -> str:
                 if datetime.now(tz).utcoffset() == datetime.now(local_tz).utcoffset():
                     return tz_name
     except Exception:
-        pass
+        # Use print since logger isn't defined yet
+        print("Failed to detect timezone, using UTC as fallback")
     return "UTC"
 
 

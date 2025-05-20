@@ -23,6 +23,8 @@ __pycache__/
 # C extensions
 *.so
 
+bandit.txt
+
 # Distribution / packaging
 .Python
 build/
